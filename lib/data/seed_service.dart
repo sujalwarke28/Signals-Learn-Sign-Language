@@ -81,7 +81,7 @@ class SeedService {
           authorName: post.authorName,
           title: post.title,
           body: post.body,
-          topic: post.topic,
+          topics: post.topics,
         );
         postCount++;
         for (final reply in post.replies) {

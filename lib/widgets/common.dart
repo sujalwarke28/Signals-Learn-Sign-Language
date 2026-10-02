@@ -16,11 +16,11 @@ class ContentWidth extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: maxWidth),
-          child: child,
-        ),
-      );
+    child: ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidth),
+      child: child,
+    ),
+  );
 }
 
 /// Breakpoints. Phone is the design target; the wider tiers only widen grids.
@@ -53,20 +53,20 @@ class StatusPill extends StatelessWidget {
     final colors = AppColors.of(context);
     final (bg, fg, icon) = switch (status) {
       LessonStatus.completed => (
-          colors.success.withValues(alpha: 0.16),
-          colors.success,
-          Icons.check_circle_rounded,
-        ),
+        colors.success.withValues(alpha: 0.16),
+        colors.success,
+        Icons.check_circle_rounded,
+      ),
       LessonStatus.inProgress => (
-          colors.streak.withValues(alpha: 0.18),
-          colors.streak,
-          Icons.play_circle_fill_rounded,
-        ),
+        colors.streak.withValues(alpha: 0.18),
+        colors.streak,
+        Icons.play_circle_fill_rounded,
+      ),
       LessonStatus.notStarted => (
-          scheme.surfaceContainerHighest,
-          scheme.onSurfaceVariant,
-          Icons.lock_open_rounded,
-        ),
+        scheme.surfaceContainerHighest,
+        scheme.onSurfaceVariant,
+        Icons.lock_open_rounded,
+      ),
     };
 
     return AnimatedContainer(
@@ -84,9 +84,7 @@ class StatusPill extends StatelessWidget {
             const SizedBox(width: 5),
             Text(
               status.label,
-              style: Theme.of(context)
-                  .textTheme
-                  .labelSmall
+              style: Theme.of(context).textTheme.labelSmall
                   ?.copyWith(color: fg, fontWeight: FontWeight.w800),
             ),
           ],
@@ -154,17 +152,13 @@ class StatTile extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             value,
-            style: Theme.of(context)
-                .textTheme
-                .headlineSmall
+            style: Theme.of(context).textTheme.headlineSmall
                 ?.copyWith(fontSize: 24, height: 1.1),
           ),
           const SizedBox(height: 2),
           Text(
             label,
-            style: Theme.of(context)
-                .textTheme
-                .labelSmall
+            style: Theme.of(context).textTheme.labelSmall
                 ?.copyWith(color: scheme.onSurfaceVariant),
           ),
         ],
@@ -228,6 +222,7 @@ class BadgeTile extends StatelessWidget {
           ),
         ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               badge.earned ? _icons[badge.icon]! : Icons.lock_rounded,
@@ -238,10 +233,17 @@ class BadgeTile extends StatelessWidget {
             Text(
               badge.label,
               textAlign: TextAlign.center,
+              // The tile is a fixed 92 wide inside a fixed-height strip, so a
+              // label that wraps to a third line overflows the row it sits in.
+              // The full text is on the tooltip and the details sheet anyway.
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: badge.earned ? scheme.onSurface : scheme.onSurfaceVariant,
-                  ),
+                fontWeight: FontWeight.w800,
+                color: badge.earned
+                    ? scheme.onSurface
+                    : scheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),
@@ -310,19 +312,26 @@ Future<void> showBadgeDetails(BuildContext context, EarnedBadge badge) {
               Text(
                 badge.description,
                 textAlign: TextAlign.center,
-                style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+                style: text.bodyMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
               ),
               const SizedBox(height: 18),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: tint.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(100),
                 ),
                 child: Text(
                   badge.earned ? 'Earned' : 'Not earned yet',
-                  style: text.labelMedium
-                      ?.copyWith(color: tint, fontWeight: FontWeight.w800),
+                  style: text.labelMedium?.copyWith(
+                    color: tint,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ],
@@ -362,9 +371,7 @@ class SectionHeader extends StatelessWidget {
                   padding: const EdgeInsets.only(top: 2),
                   child: Text(
                     subtitle!,
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
+                    style: Theme.of(context).textTheme.bodySmall
                         ?.copyWith(color: scheme.onSurfaceVariant),
                   ),
                 ),
@@ -402,15 +409,20 @@ class EmptyState extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(22),
-              decoration: BoxDecoration(
-                color: scheme.primaryContainer.withValues(alpha: 0.5),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, size: 40, color: scheme.onPrimaryContainer),
-            )
+                  padding: const EdgeInsets.all(22),
+                  decoration: BoxDecoration(
+                    color: scheme.primaryContainer.withValues(alpha: 0.5),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, size: 40, color: scheme.onPrimaryContainer),
+                )
                 .animate(onPlay: (c) => c.repeat(reverse: true))
-                .moveY(begin: 0, end: -7, duration: 2200.ms, curve: Curves.easeInOut),
+                .moveY(
+                  begin: 0,
+                  end: -7,
+                  duration: 2200.ms,
+                  curve: Curves.easeInOut,
+                ),
             const SizedBox(height: 22),
             Text(
               title,
@@ -421,9 +433,7 @@ class EmptyState extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
+              style: Theme.of(context).textTheme.bodyMedium
                   ?.copyWith(color: scheme.onSurfaceVariant),
             ),
             if (action != null) ...[const SizedBox(height: 24), action!],
@@ -445,7 +455,8 @@ class ErrorView extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final message = error.toString();
-    final isPermission = message.contains('permission-denied') ||
+    final isPermission =
+        message.contains('permission-denied') ||
         message.toLowerCase().contains('insufficient permissions');
 
     return EmptyState(
@@ -453,7 +464,7 @@ class ErrorView extends StatelessWidget {
       title: isPermission ? 'Not allowed to read that' : 'Something went wrong',
       message: isPermission
           ? 'Firestore rejected the read. Check that the security rules are '
-              'deployed and that you are signed in.\n\n$message'
+                'deployed and that you are signed in.\n\n$message'
           : message,
       action: onRetry == null
           ? null
@@ -478,20 +489,20 @@ class LoadingView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const CircularProgressIndicator(strokeWidth: 3),
-            if (message != null) ...[
-              const SizedBox(height: 16),
-              Text(
-                message!,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-              ),
-            ],
-          ],
-        ),
-      );
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const CircularProgressIndicator(strokeWidth: 3),
+        if (message != null) ...[
+          const SizedBox(height: 16),
+          Text(
+            message!,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ],
+    ),
+  );
 }

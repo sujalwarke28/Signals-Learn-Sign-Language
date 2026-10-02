@@ -28,8 +28,29 @@ class AppPalette {
     'Colors': Color(0xFF8BC34A),
   };
 
-  static Color categoryTint(String category, ColorScheme scheme) =>
-      categoryTints[category] ?? scheme.primary;
+  /// The same six hues re-stepped for a dark surface.
+  ///
+  /// Not an automatic flip: on a dark background the light-mode steps sit at
+  /// OKLCH L 0.70–0.76, above the 0.48–0.67 band where categorical colour stays
+  /// separable, so each hue is re-stepped to L 0.645 with chroma scaled to
+  /// match. Checked with the palette validator — lightness band, chroma floor,
+  /// CVD separation, normal-vision separation and contrast all pass in both
+  /// modes. Alphabet's violet was already in band and is unchanged.
+  static const categoryTintsDark = <String, Color>{
+    'Alphabet': Color(0xFF6C5CE7),
+    'Numbers': Color(0xFF24A296),
+    'Common Phrases': Color(0xFFC37A3A),
+    'Greetings': Color(0xFF4390E3),
+    'Family': Color(0xFFC86C8A),
+    'Colors': Color(0xFF709E3A),
+  };
+
+  static Color categoryTint(String category, ColorScheme scheme) {
+    final tints = scheme.brightness == Brightness.dark
+        ? categoryTintsDark
+        : categoryTints;
+    return tints[category] ?? scheme.primary;
+  }
 }
 
 /// Extra colours the widgets reach for that aren't part of [ColorScheme].
@@ -80,7 +101,10 @@ class AppColors extends ThemeExtension<AppColors> {
 class AppTheme {
   const AppTheme._();
 
-  static const _display = 'Baloo2';
+  // Outfit: geometric, low-contrast, and tight enough at display sizes to
+  // read as modern rather than cheerful. Nunito keeps the body warm so the
+  // app doesn't tip over into cold.
+  static const _display = 'Outfit';
   static const _body = 'Nunito';
 
   static ThemeData light() => _build(Brightness.light);
@@ -99,27 +123,59 @@ class AppTheme {
       fontFamily: _body,
       scaffoldBackgroundColor: isLight
           // A hair warmer than pure white so long reading sessions are kinder.
-          ? Color.alphaBlend(scheme.primary.withValues(alpha: 0.025), Colors.white)
+          ? Color.alphaBlend(
+              scheme.primary.withValues(alpha: 0.025),
+              Colors.white,
+            )
           : scheme.surface,
     );
 
-    final text = base.textTheme.apply(fontFamily: _body).copyWith(
-          displayLarge: base.textTheme.displayLarge?.copyWith(fontFamily: _display),
-          displayMedium: base.textTheme.displayMedium?.copyWith(fontFamily: _display),
-          displaySmall: base.textTheme.displaySmall?.copyWith(fontFamily: _display),
-          headlineLarge: base.textTheme.headlineLarge
-              ?.copyWith(fontFamily: _display, fontWeight: FontWeight.w700),
-          headlineMedium: base.textTheme.headlineMedium
-              ?.copyWith(fontFamily: _display, fontWeight: FontWeight.w700),
-          headlineSmall: base.textTheme.headlineSmall
-              ?.copyWith(fontFamily: _display, fontWeight: FontWeight.w700),
-          titleLarge: base.textTheme.titleLarge
-              ?.copyWith(fontFamily: _display, fontWeight: FontWeight.w700),
-          titleMedium: base.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-          titleSmall: base.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+    final text = base.textTheme
+        .apply(fontFamily: _body)
+        .copyWith(
+          displayLarge: base.textTheme.displayLarge?.copyWith(
+            fontFamily: _display,
+            letterSpacing: -1.4,
+          ),
+          displayMedium: base.textTheme.displayMedium?.copyWith(
+            fontFamily: _display,
+            letterSpacing: -1.2,
+          ),
+          displaySmall: base.textTheme.displaySmall?.copyWith(
+            fontFamily: _display,
+            letterSpacing: -1.0,
+          ),
+          headlineLarge: base.textTheme.headlineLarge?.copyWith(
+            fontFamily: _display,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.6,
+          ),
+          headlineMedium: base.textTheme.headlineMedium?.copyWith(
+            fontFamily: _display,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.6,
+          ),
+          headlineSmall: base.textTheme.headlineSmall?.copyWith(
+            fontFamily: _display,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.6,
+          ),
+          titleLarge: base.textTheme.titleLarge?.copyWith(
+            fontFamily: _display,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.3,
+          ),
+          titleMedium: base.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+          titleSmall: base.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
           bodyLarge: base.textTheme.bodyLarge?.copyWith(height: 1.45),
           bodyMedium: base.textTheme.bodyMedium?.copyWith(height: 1.45),
-          labelLarge: base.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+          labelLarge: base.textTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
         );
 
     return base.copyWith(
@@ -158,14 +214,18 @@ class AppTheme {
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           minimumSize: const Size(0, 54),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
           textStyle: text.labelLarge?.copyWith(fontSize: 16),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           minimumSize: const Size(0, 54),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
           textStyle: text.labelLarge?.copyWith(fontSize: 16),
         ),
       ),
@@ -195,7 +255,10 @@ class AppTheme {
           borderRadius: BorderRadius.circular(18),
           borderSide: BorderSide(color: scheme.error, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 18,
+          vertical: 18,
+        ),
       ),
       chipTheme: ChipThemeData(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -215,7 +278,9 @@ class AppTheme {
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        contentTextStyle: text.bodyMedium?.copyWith(color: scheme.onInverseSurface),
+        contentTextStyle: text.bodyMedium?.copyWith(
+          color: scheme.onInverseSurface,
+        ),
       ),
       dialogTheme: DialogThemeData(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),

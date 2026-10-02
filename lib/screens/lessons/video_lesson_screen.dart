@@ -90,8 +90,9 @@ class _VideoLessonScreenState extends ConsumerState<VideoLessonScreen> {
     // Held separately so a failure part-way through can still release it.
     VideoPlayerController? created;
     try {
-      final controller =
-          VideoPlayerController.networkUrl(Uri.parse(lesson.videoUrl));
+      final controller = VideoPlayerController.networkUrl(
+        Uri.parse(lesson.videoUrl),
+      );
       created = controller;
       await controller.initialize();
       if (!mounted) {
@@ -117,9 +118,11 @@ class _VideoLessonScreenState extends ConsumerState<VideoLessonScreen> {
         // Drop the stale checkpoint so a later resume can't jump back.
         unawaited(_resetSavedPosition());
       }
-      setState(() => _watchedFraction = controller.value.duration > Duration.zero
-          ? start.inMilliseconds / controller.value.duration.inMilliseconds
-          : 0);
+      setState(
+        () => _watchedFraction = controller.value.duration > Duration.zero
+            ? start.inMilliseconds / controller.value.duration.inMilliseconds
+            : 0,
+      );
 
       // Browsers reject unmuted autoplay without a prior user gesture
       // (NotAllowedError), which leaves the player stalled. Muted autoplay is
@@ -143,9 +146,11 @@ class _VideoLessonScreenState extends ConsumerState<VideoLessonScreen> {
         materialProgressColors: ChewieProgressColors(
           playedColor: Theme.of(context).colorScheme.primary,
           handleColor: Theme.of(context).colorScheme.primary,
-          backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-          bufferedColor:
-              Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+          backgroundColor: Theme.of(context)
+              .colorScheme
+              .surfaceContainerHighest,
+          bufferedColor: Theme.of(context).colorScheme.primary
+              .withValues(alpha: 0.3),
         ),
       );
       setState(() {
@@ -157,8 +162,10 @@ class _VideoLessonScreenState extends ConsumerState<VideoLessonScreen> {
       // save in dispose() never touches `ref`.
       _cacheSaveHandles();
       // Persist the scrub position every few seconds rather than every frame.
-      _positionSaveTimer =
-          Timer.periodic(const Duration(seconds: 5), (_) => _savePosition());
+      _positionSaveTimer = Timer.periodic(
+        const Duration(seconds: 5),
+        (_) => _savePosition(),
+      );
     } catch (e) {
       // The controller never reached state, so dispose() would not free it:
       // release the platform resources here instead of leaking them.
@@ -192,7 +199,8 @@ class _VideoLessonScreenState extends ConsumerState<VideoLessonScreen> {
     }
 
     final reachedEnd =
-        fraction >= AppConstants.videoCompleteFraction || _isFinished(controller);
+        fraction >= AppConstants.videoCompleteFraction ||
+        _isFinished(controller);
     if (!_markedWatched && reachedEnd) {
       _markedWatched = true;
       _markWatched();
@@ -325,12 +333,11 @@ class _VideoLessonScreenState extends ConsumerState<VideoLessonScreen> {
                                   key: const ValueKey('unlocked'),
                                   questionCount: questionCount,
                                 )
-                              : _KeepWatchingCard(key: const ValueKey('watching')),
+                              : _KeepWatchingCard(
+                                  key: const ValueKey('watching'),
+                                ),
                         ),
-                        if (!wide) ...[
-                          const SizedBox(height: 20),
-                          agenda,
-                        ],
+                        if (!wide) ...[const SizedBox(height: 20), agenda],
                         const SizedBox(height: 24),
                       ],
                     ),
@@ -431,7 +438,11 @@ class _VideoLessonScreenState extends ConsumerState<VideoLessonScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.videocam_off_rounded, color: Colors.white70, size: 36),
+              const Icon(
+                Icons.videocam_off_rounded,
+                color: Colors.white70,
+                size: 36,
+              ),
               const SizedBox(height: 12),
               Text(
                 _error!,
@@ -517,8 +528,9 @@ class _AgendaPanel extends StatelessWidget {
           const SizedBox(height: 3),
           Text(
             'Where you are in this lesson.',
-            style: theme.textTheme.labelSmall
-                ?.copyWith(color: scheme.onSurfaceVariant),
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 16),
           _AgendaStep(
@@ -545,8 +557,8 @@ class _AgendaPanel extends StatelessWidget {
             subtitle: progress.attemptCount == 0
                 ? 'Not attempted yet'
                 : 'Best ${progress.bestScorePercent}% · '
-                    '${progress.attemptCount} '
-                    'attempt${progress.attemptCount == 1 ? '' : 's'}',
+                      '${progress.attemptCount} '
+                      'attempt${progress.attemptCount == 1 ? '' : 's'}',
             done: progress.quizPassed,
             active: false,
             isLast: true,
@@ -557,8 +569,9 @@ class _AgendaPanel extends StatelessWidget {
             const SizedBox(height: 10),
             Text(
               '${lesson!.category} · ${lesson!.difficulty}',
-              style: theme.textTheme.labelSmall
-                  ?.copyWith(color: scheme.onSurfaceVariant),
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
             ),
           ],
         ],
@@ -597,8 +610,8 @@ class _AgendaStep extends StatelessWidget {
     final markerColor = done
         ? colors.success
         : active
-            ? scheme.primary
-            : scheme.onSurfaceVariant.withValues(alpha: 0.4);
+        ? scheme.primary
+        : scheme.onSurfaceVariant.withValues(alpha: 0.4);
 
     return Padding(
       padding: EdgeInsets.only(bottom: isLast ? 0 : 14),
@@ -617,13 +630,13 @@ class _AgendaStep extends StatelessWidget {
             child: done
                 ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
                 : locked
-                    ? Icon(Icons.lock_outline_rounded,
-                        size: 12, color: markerColor)
-                    : Text(
-                        '$number',
-                        style: theme.textTheme.labelSmall
-                            ?.copyWith(color: markerColor),
-                      ),
+                ? Icon(Icons.lock_outline_rounded, size: 12, color: markerColor)
+                : Text(
+                    '$number',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: markerColor,
+                    ),
+                  ),
           ),
           const SizedBox(width: 11),
           Expanded(
@@ -640,8 +653,9 @@ class _AgendaStep extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  style: theme.textTheme.labelSmall
-                      ?.copyWith(color: scheme.onSurfaceVariant),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -684,9 +698,9 @@ class _NextBar extends StatelessWidget {
     final hint = !hasQuiz
         ? 'This lesson has no quiz yet.'
         : enabled
-            ? 'Quiz unlocked — $questionCount '
-                'question${questionCount == 1 ? '' : 's'}.'
-            : 'Watch to the end to unlock the quiz.';
+        ? 'Quiz unlocked — $questionCount '
+              'question${questionCount == 1 ? '' : 's'}.'
+        : 'Watch to the end to unlock the quiz.';
 
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
@@ -701,14 +715,16 @@ class _NextBar extends StatelessWidget {
           Expanded(
             child: Text(
               hint,
-              style: theme.textTheme.labelSmall
-                  ?.copyWith(color: scheme.onSurfaceVariant),
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
             ),
           ),
           const SizedBox(width: 12),
           SoundFilledButton(
-            onPressed:
-                enabled ? () => context.push(Routes.quiz(lessonId)) : null,
+            onPressed: enabled
+                ? () => context.push(Routes.quiz(lessonId))
+                : null,
             icon: const Icon(Icons.arrow_forward_rounded),
             child: const Text('Next: Quiz'),
           ),
@@ -719,10 +735,7 @@ class _NextBar extends StatelessWidget {
 }
 
 class _QuizUnlockedCard extends StatelessWidget {
-  const _QuizUnlockedCard({
-    super.key,
-    required this.questionCount,
-  });
+  const _QuizUnlockedCard({super.key, required this.questionCount});
 
   final int questionCount;
 
@@ -734,30 +747,33 @@ class _QuizUnlockedCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.success.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: colors.success.withValues(alpha: 0.4), width: 1.5),
+        border: Border.all(
+          color: colors.success.withValues(alpha: 0.4),
+          width: 1.5,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
-              Icon(Icons.lock_open_rounded, color: colors.success)
-                  .animate()
-                  .scale(
-                    begin: const Offset(0.4, 0.4),
-                    duration: 500.ms,
-                    curve: Curves.elasticOut,
-                  ),
+              Icon(
+                Icons.lock_open_rounded,
+                color: colors.success,
+              ).animate().scale(
+                begin: const Offset(0.4, 0.4),
+                duration: 500.ms,
+                curve: Curves.elasticOut,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   questionCount == 0
                       ? 'Nice work — this lesson has no quiz yet.'
                       : 'Quiz unlocked: $questionCount '
-                          'question${questionCount == 1 ? '' : 's'} to go.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                            'question${questionCount == 1 ? '' : 's'} to go.',
+                  style: Theme.of(context).textTheme.bodyMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
                 ),
               ),
             ],

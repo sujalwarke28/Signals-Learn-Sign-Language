@@ -10,7 +10,9 @@ import '../../providers/auth_providers.dart';
 import '../../providers/forum_providers.dart';
 import '../../providers/settings_providers.dart';
 import '../../widgets/common.dart';
+import '../../widgets/mention_field.dart';
 import 'forum_list_screen.dart' show timeAgo;
+import 'mentions.dart';
 
 class PostDetailScreen extends ConsumerStatefulWidget {
   const PostDetailScreen({super.key, required this.postId});
@@ -33,6 +35,14 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
     super.dispose();
   }
 
+  /// Mentionable people: everyone who has posted on the board, plus everyone
+  /// in this thread, so a reply can name someone who only appears here.
+  List<ForumPerson> _people() => forumPeople(
+    posts: ref.read(forumPostsProvider).value ?? const [],
+    replies: ref.read(forumRepliesProvider(widget.postId)).value ?? const [],
+    excludeUid: ref.read(currentUidProvider),
+  );
+
   Future<void> _send() async {
     final body = _reply.text.trim();
     if (body.isEmpty) return;
@@ -42,11 +52,14 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
 
     setState(() => _sending = true);
     try {
-      await ref.read(forumRepositoryProvider).addReply(
+      await ref
+          .read(forumRepositoryProvider)
+          .addReply(
             postId: widget.postId,
             authorId: uid,
             authorName: user.displayName.isEmpty ? 'Learner' : user.displayName,
             body: body,
+            mentionedUids: resolveMentions(body, _people()),
           );
       if (!mounted) return;
       _reply.clear();
@@ -54,9 +67,9 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
       ref.playSfx(Sfx.post);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not post the reply: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not post the reply: $e')));
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -67,6 +80,11 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
     final post = ref.watch(forumPostProvider(widget.postId));
     final replies = ref.watch(forumRepliesProvider(widget.postId));
     final scheme = Theme.of(context).colorScheme;
+    final viewerUid = ref.watch(currentUidProvider);
+    final people = forumPeople(
+      posts: ref.watch(forumPostsProvider).value ?? const [],
+      replies: replies.value ?? const [],
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -96,29 +114,41 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                _PostHeader(post: p),
+                                _PostHeader(
+                                  post: p,
+                                  people: people,
+                                  viewerUid: viewerUid,
+                                ),
                                 const SizedBox(height: 24),
-                                Divider(color: scheme.outlineVariant
-                                    .withValues(alpha: 0.5)),
+                                Divider(
+                                  color: scheme.outlineVariant.withValues(
+                                    alpha: 0.5,
+                                  ),
+                                ),
                                 const SizedBox(height: 16),
                                 replies.when(
                                   loading: () => const Padding(
                                     padding: EdgeInsets.all(24),
                                     child: Center(
-                                      child: CircularProgressIndicator(strokeWidth: 2.5),
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.5,
+                                      ),
                                     ),
                                   ),
-                                  error: (e, _) => Text('Could not load replies: $e'),
+                                  error: (e, _) =>
+                                      Text('Could not load replies: $e'),
                                   data: (list) => Column(
-                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
                                     children: [
                                       Text(
                                         list.isEmpty
                                             ? 'No replies yet'
                                             : '${list.length} '
-                                                '${list.length == 1 ? 'reply' : 'replies'}',
-                                        style:
-                                            Theme.of(context).textTheme.titleMedium,
+                                                  '${list.length == 1 ? 'reply' : 'replies'}',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium,
                                       ),
                                       const SizedBox(height: 14),
                                       if (list.isEmpty)
@@ -128,15 +158,21 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
                                               .textTheme
                                               .bodySmall
                                               ?.copyWith(
-                                                  color: scheme.onSurfaceVariant),
+                                                color: scheme.onSurfaceVariant,
+                                              ),
                                         )
                                       else
                                         for (var i = 0; i < list.length; i++)
                                           Padding(
-                                            padding: const EdgeInsets.only(bottom: 12),
+                                            padding: const EdgeInsets.only(
+                                              bottom: 12,
+                                            ),
                                             child: _ReplyCard(
+                                              people: people,
+                                              viewerUid: viewerUid,
                                               reply: list[i],
-                                              isAuthor: list[i].authorId ==
+                                              isAuthor:
+                                                  list[i].authorId ==
                                                   p.authorId,
                                               index: i,
                                             ),
@@ -165,7 +201,14 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
 }
 
 class _PostHeader extends StatelessWidget {
-  const _PostHeader({required this.post});
+  const _PostHeader({
+    required this.post,
+    required this.people,
+    required this.viewerUid,
+  });
+
+  final List<ForumPerson> people;
+  final String? viewerUid;
 
   final ForumPost post;
 
@@ -196,27 +239,41 @@ class _PostHeader extends StatelessWidget {
         const SizedBox(height: 12),
         Row(
           children: [
-            Icon(Icons.person_rounded, size: 15, color: scheme.onSurfaceVariant),
+            Icon(
+              Icons.person_rounded,
+              size: 15,
+              color: scheme.onSurfaceVariant,
+            ),
             const SizedBox(width: 5),
             Text(
               post.authorName,
-              style: theme.textTheme.labelMedium
-                  ?.copyWith(color: scheme.onSurfaceVariant),
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(width: 10),
-            Text('·',
-                style: theme.textTheme.labelMedium
-                    ?.copyWith(color: scheme.onSurfaceVariant)),
+            Text(
+              '·',
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
             const SizedBox(width: 10),
             Text(
               timeAgo(post.createdAt),
-              style: theme.textTheme.labelMedium
-                  ?.copyWith(color: scheme.onSurfaceVariant),
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),
         const SizedBox(height: 18),
-        Text(post.body, style: theme.textTheme.bodyLarge),
+        MentionText(
+          body: post.body,
+          people: people,
+          viewerUid: viewerUid,
+          style: theme.textTheme.bodyLarge,
+        ),
       ],
     ).animate().fadeIn(duration: 300.ms).moveY(begin: 10, end: 0);
   }
@@ -227,7 +284,12 @@ class _ReplyCard extends StatelessWidget {
     required this.reply,
     required this.isAuthor,
     required this.index,
+    required this.people,
+    required this.viewerUid,
   });
+
+  final List<ForumPerson> people;
+  final String? viewerUid;
 
   final ForumReply reply;
   final bool isAuthor;
@@ -239,56 +301,64 @@ class _ReplyCard extends StatelessWidget {
     final scheme = theme.colorScheme;
 
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-          bottomRight: Radius.circular(20),
-          bottomLeft: Radius.circular(6),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerLow,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+              bottomRight: Radius.circular(20),
+              bottomLeft: Radius.circular(6),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(reply.authorName, style: theme.textTheme.titleSmall),
-              if (isAuthor) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: scheme.primary.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    'author',
+              Row(
+                children: [
+                  Text(reply.authorName, style: theme.textTheme.titleSmall),
+                  if (isAuthor) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: scheme.primary.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'author',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: scheme.primary,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                  const Spacer(),
+                  Text(
+                    timeAgo(reply.createdAt),
                     style: theme.textTheme.labelSmall?.copyWith(
-                      color: scheme.primary,
-                      fontWeight: FontWeight.w800,
+                      color: scheme.onSurfaceVariant,
                     ),
                   ),
-                ),
-              ],
-              const Spacer(),
-              Text(
-                timeAgo(reply.createdAt),
-                style: theme.textTheme.labelSmall
-                    ?.copyWith(color: scheme.onSurfaceVariant),
+                ],
+              ),
+              const SizedBox(height: 8),
+              MentionText(
+                body: reply.body,
+                people: people,
+                viewerUid: viewerUid,
+                style: theme.textTheme.bodyMedium,
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(reply.body, style: theme.textTheme.bodyMedium),
-        ],
-      ),
-    ).animate().fadeIn(delay: (35 * index.clamp(0, 8)).ms, duration: 280.ms).moveY(
-          begin: 10,
-          end: 0,
-          curve: Curves.easeOutCubic,
-        );
+        )
+        .animate()
+        .fadeIn(delay: (35 * index.clamp(0, 8)).ms, duration: 280.ms)
+        .moveY(begin: 10, end: 0, curve: Curves.easeOutCubic);
   }
 }
 
@@ -336,8 +406,10 @@ class _ReplyComposer extends StatelessWidget {
                 decoration: const InputDecoration(
                   hintText: 'Write a reply…',
                   counterText: '',
-                  contentPadding:
-                      EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                 ),
                 onSubmitted: (_) => sending ? null : onSend(),
               ),

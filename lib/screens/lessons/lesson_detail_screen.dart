@@ -109,7 +109,10 @@ class _Body extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Text(lesson.title, style: theme.textTheme.headlineSmall),
+                        Text(
+                          lesson.title,
+                          style: theme.textTheme.headlineSmall,
+                        ),
                         const SizedBox(height: 10),
                         StatusPill(status: progress.status),
                       ],
@@ -152,7 +155,8 @@ class _Body extends ConsumerWidget {
                 style: theme.textTheme.bodyMedium,
               ),
               const SizedBox(height: 26),
-              if (progress.bestScorePercent > 0 || progress.attemptCount > 0) ...[
+              if (progress.bestScorePercent > 0 ||
+                  progress.attemptCount > 0) ...[
                 Container(
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
@@ -165,23 +169,28 @@ class _Body extends ConsumerWidget {
                         value: progress.bestScorePercent / 100,
                         size: 66,
                         strokeWidth: 8,
-                        color: progress.quizPassed ? colors.success : colors.streak,
+                        color: progress.quizPassed
+                            ? colors.success
+                            : colors.streak,
                       ),
                       const SizedBox(width: 16),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Your best score',
-                                style: theme.textTheme.titleSmall),
+                            Text(
+                              'Your best score',
+                              style: theme.textTheme.titleSmall,
+                            ),
                             const SizedBox(height: 4),
                             Text(
                               '${progress.attemptCount} '
                               'attempt${progress.attemptCount == 1 ? '' : 's'} · '
                               '${progress.quizPassed ? 'passed' : 'not passed yet'}'
                               ' (${AppConstants.passThresholdPercent}% to pass)',
-                              style: theme.textTheme.bodySmall
-                                  ?.copyWith(color: scheme.onSurfaceVariant),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                              ),
                             ),
                           ],
                         ),
@@ -193,29 +202,33 @@ class _Body extends ConsumerWidget {
               ],
               _Steps(progress: progress, hasQuiz: hasQuiz),
               const SizedBox(height: 26),
-              Builder(builder: (context) {
-                final action = watchActionFor(
-                  lesson: lesson,
-                  progress: progress,
-                  allowRewatch: kAllowRewatch,
-                );
-                return SoundFilledButton(
-                  onPressed: action.enabled
-                      ? () => context.push(
+              Builder(
+                builder: (context) {
+                  final action = watchActionFor(
+                    lesson: lesson,
+                    progress: progress,
+                    allowRewatch: kAllowRewatch,
+                  );
+                  return SoundFilledButton(
+                    onPressed: action.enabled
+                        ? () => context.push(
                             Routes.watch(lesson.id, rewatch: action.rewatch),
                           )
-                      : null,
-                  icon: Icon(action.icon),
-                  child: Text(action.label),
-                );
-              }),
+                        : null,
+                    icon: Icon(action.icon),
+                    child: Text(action.label),
+                  );
+                },
+              ),
               if (lesson.videoUrl.isEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
                     'This lesson has no video attached yet.',
                     textAlign: TextAlign.center,
-                    style: theme.textTheme.labelSmall?.copyWith(color: scheme.error),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: scheme.error,
+                    ),
                   ),
                 ),
               const SizedBox(height: 12),
@@ -223,15 +236,17 @@ class _Body extends ConsumerWidget {
                 onPressed: !hasQuiz || !progress.quizUnlocked
                     ? null
                     : () => context.push(Routes.quiz(lesson.id)),
-                icon: Icon(progress.quizUnlocked
-                    ? Icons.quiz_rounded
-                    : Icons.lock_outline_rounded),
+                icon: Icon(
+                  progress.quizUnlocked
+                      ? Icons.quiz_rounded
+                      : Icons.lock_outline_rounded,
+                ),
                 child: Text(
                   !hasQuiz
                       ? 'Quiz coming soon'
                       : progress.quizUnlocked
-                          ? (progress.quizPassed ? 'Retake quiz' : 'Take the quiz')
-                          : 'Finish the video to unlock',
+                      ? (progress.quizPassed ? 'Retake quiz' : 'Take the quiz')
+                      : 'Finish the video to unlock',
                 ),
               ),
             ],
@@ -264,9 +279,7 @@ class _MetaChip extends StatelessWidget {
           const SizedBox(width: 5),
           Text(
             label,
-            style: Theme.of(context)
-                .textTheme
-                .labelSmall
+            style: Theme.of(context).textTheme.labelSmall
                 ?.copyWith(color: scheme.onSurfaceVariant),
           ),
         ],
@@ -290,16 +303,16 @@ class _Steps extends StatelessWidget {
         progress.videoCompleted
             ? _StepState.done
             : progress.isInProgress
-                ? _StepState.active
-                : _StepState.todo,
+            ? _StepState.active
+            : _StepState.todo,
       ),
       (
         'Pass the quiz (${AppConstants.passThresholdPercent}%)',
         progress.quizPassed
             ? _StepState.done
             : progress.videoCompleted
-                ? _StepState.active
-                : _StepState.todo,
+            ? _StepState.active
+            : _StepState.todo,
       ),
       (
         'Lesson complete',
@@ -310,7 +323,10 @@ class _Steps extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('How to finish it', style: Theme.of(context).textTheme.titleMedium),
+        Text(
+          'How to finish it',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
         const SizedBox(height: 12),
         for (var i = 0; i < steps.length; i++)
           _StepRow(
@@ -326,7 +342,11 @@ class _Steps extends StatelessWidget {
 enum _StepState { todo, active, done }
 
 class _StepRow extends StatelessWidget {
-  const _StepRow({required this.label, required this.state, required this.isLast});
+  const _StepRow({
+    required this.label,
+    required this.state,
+    required this.isLast,
+  });
 
   final String label;
   final _StepState state;
@@ -356,7 +376,10 @@ class _StepRow extends StatelessWidget {
                     ? Colors.transparent
                     : color.withValues(alpha: 0.16),
                 shape: BoxShape.circle,
-                border: Border.all(color: color.withValues(alpha: 0.6), width: 1.6),
+                border: Border.all(
+                  color: color.withValues(alpha: 0.6),
+                  width: 1.6,
+                ),
               ),
               alignment: Alignment.center,
               child: Icon(icon, size: 15, color: color),
@@ -377,12 +400,13 @@ class _StepRow extends StatelessWidget {
             child: Text(
               label,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight:
-                        state == _StepState.active ? FontWeight.w800 : FontWeight.w600,
-                    color: state == _StepState.todo
-                        ? scheme.onSurfaceVariant
-                        : scheme.onSurface,
-                  ),
+                fontWeight: state == _StepState.active
+                    ? FontWeight.w800
+                    : FontWeight.w600,
+                color: state == _StepState.todo
+                    ? scheme.onSurfaceVariant
+                    : scheme.onSurface,
+              ),
             ),
           ),
         ),
@@ -405,16 +429,17 @@ class _PlaceholderNotice extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.info_outline_rounded,
-              size: 18, color: scheme.onTertiaryContainer),
+          Icon(
+            Icons.info_outline_rounded,
+            size: 18,
+            color: scheme.onTertiaryContainer,
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               'Sample lesson: the clip is a placeholder standing in for real '
               'sign-language footage. The quiz content is real.',
-              style: Theme.of(context)
-                  .textTheme
-                  .labelSmall
+              style: Theme.of(context).textTheme.labelSmall
                   ?.copyWith(color: scheme.onTertiaryContainer),
             ),
           ),

@@ -48,7 +48,11 @@ class _ConfettiBurstState extends State<ConfettiBurst>
 
 /// Wraps [child] and lets any descendant fire a confetti burst over it.
 class CelebrationScope extends StatefulWidget {
-  const CelebrationScope({super.key, required this.child, this.autoPlay = false});
+  const CelebrationScope({
+    super.key,
+    required this.child,
+    this.autoPlay = false,
+  });
 
   final Widget child;
   final bool autoPlay;

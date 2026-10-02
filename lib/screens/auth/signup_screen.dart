@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../data/auth_repository.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/pressable.dart';
+import '../../router/app_router.dart';
 import 'auth_scaffold.dart';
 import 'google_sign_in_button.dart';
 
@@ -39,7 +39,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       _error = null;
     });
     try {
-      await ref.read(authRepositoryProvider).signUp(
+      await ref
+          .read(authRepositoryProvider)
+          .signUp(
             email: _email.text,
             password: _password.text,
             displayName: _name.text,
@@ -106,9 +108,11 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   prefixIcon: const Icon(Icons.lock_outline_rounded),
                   suffixIcon: IconButton(
                     onPressed: () => setState(() => _obscure = !_obscure),
-                    icon: Icon(_obscure
-                        ? Icons.visibility_rounded
-                        : Icons.visibility_off_rounded),
+                    icon: Icon(
+                      _obscure
+                          ? Icons.visibility_rounded
+                          : Icons.visibility_off_rounded,
+                    ),
                     tooltip: _obscure ? 'Show password' : 'Hide password',
                   ),
                 ),
@@ -138,9 +142,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 'New accounts start as learners. Admin access is granted by '
                 'changing your role in the Firebase console.',
                 textAlign: TextAlign.center,
-                style: Theme.of(context)
-                    .textTheme
-                    .labelSmall
+                style: Theme.of(context).textTheme.labelSmall
                     ?.copyWith(color: scheme.onSurfaceVariant),
               ),
               const SizedBox(height: 10),
@@ -149,13 +151,14 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 children: [
                   Text(
                     'Already have an account?',
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
+                    style: Theme.of(context).textTheme.bodySmall
                         ?.copyWith(color: scheme.onSurfaceVariant),
                   ),
                   TextButton(
-                    onPressed: _busy ? null : () => context.pop(),
+                    // Not a plain pop: the welcome page reaches sign-up
+                    // with `go`, so there is no login screen underneath
+                    // to pop back to.
+                    onPressed: _busy ? null : () => context.popOr(Routes.login),
                     child: const Text('Sign in'),
                   ),
                 ],

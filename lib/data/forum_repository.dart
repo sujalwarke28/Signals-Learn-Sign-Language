@@ -43,21 +43,31 @@ class ForumRepository {
         return replies;
       });
 
+  /// [topics] is the set of channels the post lands in; [mentionedUids] the
+  /// people its body addresses, resolved before writing so the mentions view is
+  /// a filter over the existing stream rather than a second indexed query.
+  ///
+  /// `topic` is still written next to `topics` so a build from before channels
+  /// existed keeps reading these posts.
   Future<String> createPost({
     required String authorId,
     required String authorName,
     required String title,
     required String body,
-    required String topic,
+    required List<String> topics,
+    List<String> mentionedUids = const [],
   }) async {
+    final channels = topics.isEmpty ? const ['General'] : topics;
     final ref = _refs.posts.doc();
     await ref.set({
       'authorId': authorId,
       'authorName': authorName,
       'title': title.trim(),
       'body': body.trim(),
-      'topic': topic,
+      'topics': channels,
+      'topic': channels.first,
       'replyCount': 0,
+      'mentionedUids': mentionedUids,
       'createdAt': FieldValue.serverTimestamp(),
     });
     return ref.id;
@@ -70,12 +80,14 @@ class ForumRepository {
     required String authorId,
     required String authorName,
     required String body,
+    List<String> mentionedUids = const [],
   }) async {
     final batch = _db.batch();
     batch.set(_refs.replies(postId).doc(), {
       'authorId': authorId,
       'authorName': authorName,
       'body': body.trim(),
+      'mentionedUids': mentionedUids,
       'createdAt': FieldValue.serverTimestamp(),
     });
     batch.update(_refs.post(postId), {'replyCount': FieldValue.increment(1)});

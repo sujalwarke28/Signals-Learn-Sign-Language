@@ -46,17 +46,14 @@ class ProgressRing extends StatelessWidget {
               children: [
                 Text(
                   label ?? '${(animated * 100).round()}%',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontSize: size * 0.24,
-                        height: 1.1,
-                      ),
+                  style: Theme.of(context).textTheme.titleLarge
+                      ?.copyWith(fontSize: size * 0.24, height: 1.1),
                 ),
                 if (caption != null)
                   Text(
                     caption!,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                        ),
+                    style: Theme.of(context).textTheme.labelSmall
+                        ?.copyWith(color: scheme.onSurfaceVariant),
                   ),
               ],
             ),

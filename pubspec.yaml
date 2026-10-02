@@ -77,6 +77,6 @@ flutter:
     - family: Nunito
       fonts:
         - asset: assets/fonts/NunitoVariable.ttf
-    - family: Baloo2
+    - family: Outfit
       fonts:
-        - asset: assets/fonts/Baloo2Variable.ttf
+        - asset: assets/fonts/OutfitVariable.ttf

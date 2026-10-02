@@ -20,10 +20,12 @@ import '../screens/quiz/results_screen.dart';
 import '../screens/settings/settings_screen.dart';
 import '../screens/shell/app_shell.dart';
 import '../screens/shell/splash_screen.dart';
+import '../screens/welcome/welcome_screen.dart';
 
 class Routes {
   const Routes._();
   static const splash = '/splash';
+  static const welcome = '/welcome';
   static const login = '/login';
   static const signup = '/signup';
   static const home = '/home';
@@ -34,6 +36,7 @@ class Routes {
   static const addLesson = '/admin/add-lesson';
 
   static String lesson(String id) => '/lessons/$id';
+
   /// Query parameter carrying the rewatch intent through the URL.
   static const rewatchParam = 'rewatch';
 
@@ -65,18 +68,32 @@ String? authRedirect({
   // flash the login screen at a returning user.
   if (!resolved) return location == Routes.splash ? null : Routes.splash;
 
-  final onAuthScreen = location == Routes.login ||
-      location == Routes.signup ||
-      location == Routes.splash;
+  // The three screens a signed-out visitor is allowed to sit on. The splash is
+  // not among them: nothing is still resolving by this point, so staying there
+  // would strand the app on a spinner.
+  final isPublic =
+      location == Routes.welcome ||
+      location == Routes.login ||
+      location == Routes.signup;
 
-  // Signed out, the only places worth being are login and sign-up. The splash
-  // is excluded because nothing is still resolving by this point, so sitting
-  // there would strand the app on a spinner.
-  if (!signedIn) {
-    return onAuthScreen && location != Routes.splash ? null : Routes.login;
-  }
-  if (onAuthScreen) return Routes.home;
+  // Signed out, anything else sends them to the welcome page rather than
+  // straight to login. Someone opening the web build for the first time should
+  // meet the pitch, not a password field.
+  if (!signedIn) return isPublic ? null : Routes.welcome;
+
+  if (isPublic || location == Routes.splash) return Routes.home;
   return null;
+}
+
+/// Pops when there is something to pop, and navigates to [fallback] when there
+/// isn't.
+///
+/// A back link can only pop a route it was pushed onto. On the web every route
+/// is also an address, so any screen can be opened cold — from a pasted URL, a
+/// bookmark, a reload, or a `go` that replaced the stack instead of growing it.
+/// A bare `pop()` throws "There is nothing to pop" in all of those cases.
+extension PopOr on BuildContext {
+  void popOr(String fallback) => canPop() ? pop() : go(fallback);
 }
 
 final _rootKey = GlobalKey<NavigatorState>(debugLabel: 'root');
@@ -108,6 +125,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     ),
     routes: [
       GoRoute(path: Routes.splash, builder: (_, __) => const SplashScreen()),
+      GoRoute(path: Routes.welcome, builder: (_, __) => const WelcomeScreen()),
       GoRoute(path: Routes.login, builder: (_, __) => const LoginScreen()),
       GoRoute(path: Routes.signup, builder: (_, __) => const SignupScreen()),
       GoRoute(
@@ -134,7 +152,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/lessons/:id/quiz',
         parentNavigatorKey: _rootKey,
-        builder: (_, state) => QuizScreen(lessonId: state.pathParameters['id']!),
+        builder: (_, state) =>
+            QuizScreen(lessonId: state.pathParameters['id']!),
       ),
       GoRoute(
         path: '/lessons/:id/results',
@@ -155,19 +174,24 @@ final routerProvider = Provider<GoRouter>((ref) {
             AppShell(navigationShell: navigationShell),
         navigatorContainerBuilder: (context, navigationShell, children) =>
             IndexedStack(
-          index: navigationShell.currentIndex,
-          children: [
-            for (var i = 0; i < children.length; i++)
-              HeroMode(
-                enabled: i == navigationShell.currentIndex,
-                child: children[i],
-              ),
-          ],
-        ),
+              index: navigationShell.currentIndex,
+              children: [
+                for (var i = 0; i < children.length; i++)
+                  HeroMode(
+                    enabled: i == navigationShell.currentIndex,
+                    child: children[i],
+                  ),
+              ],
+            ),
         branches: [
           StatefulShellBranch(
             navigatorKey: _shellKeys[0],
-            routes: [GoRoute(path: Routes.home, builder: (_, __) => const DashboardScreen())],
+            routes: [
+              GoRoute(
+                path: Routes.home,
+                builder: (_, __) => const DashboardScreen(),
+              ),
+            ],
           ),
           StatefulShellBranch(
             navigatorKey: _shellKeys[1],
@@ -178,8 +202,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                 routes: [
                   GoRoute(
                     path: ':id',
-                    builder: (_, state) =>
-                        LessonDetailScreen(lessonId: state.pathParameters['id']!),
+                    builder: (_, state) => LessonDetailScreen(
+                      lessonId: state.pathParameters['id']!,
+                    ),
                   ),
                 ],
               ),
@@ -187,7 +212,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           StatefulShellBranch(
             navigatorKey: _shellKeys[2],
-            routes: [GoRoute(path: Routes.progress, builder: (_, __) => const ProgressScreen())],
+            routes: [
+              GoRoute(
+                path: Routes.progress,
+                builder: (_, __) => const ProgressScreen(),
+              ),
+            ],
           ),
           StatefulShellBranch(
             navigatorKey: _shellKeys[3],
@@ -222,9 +252,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             children: [
               const Icon(Icons.explore_off_rounded, size: 48),
               const SizedBox(height: 16),
-              Text('No screen at ${state.uri}',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleMedium),
+              Text(
+                'No screen at ${state.uri}',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
               const SizedBox(height: 20),
               FilledButton(
                 onPressed: () => context.go(Routes.home),

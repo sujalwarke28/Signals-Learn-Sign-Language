@@ -9,7 +9,12 @@ import '../../providers/auth_providers.dart';
 import '../../providers/settings_providers.dart';
 import '../../router/app_router.dart';
 import '../../widgets/common.dart';
+import '../../providers/forum_providers.dart';
+import '../../widgets/mention_field.dart';
 import '../../widgets/pressable.dart';
+import '../../widgets/screen_canopy.dart';
+import 'channels.dart';
+import 'mentions.dart';
 
 class NewPostScreen extends ConsumerStatefulWidget {
   const NewPostScreen({super.key});
@@ -22,7 +27,10 @@ class _NewPostScreenState extends ConsumerState<NewPostScreen> {
   final _form = GlobalKey<FormState>();
   final _title = TextEditingController();
   final _body = TextEditingController();
-  String _topic = AppConstants.forumTopics.first;
+
+  /// A post can land in several channels; it must land in at least one, so
+  /// the first is pre-selected rather than leaving the form invalid.
+  final _topics = <String>{AppConstants.forumTopics.first};
   bool _sending = false;
 
   @override
@@ -40,12 +48,21 @@ class _NewPostScreenState extends ConsumerState<NewPostScreen> {
 
     setState(() => _sending = true);
     try {
-      final id = await ref.read(forumRepositoryProvider).createPost(
+      // Resolved here rather than on read: the body is parsed once, against
+      // the people who exist at the time of writing.
+      final mentioned = resolveMentions(
+        _body.text,
+        ref.read(forumPeopleProvider),
+      );
+      final id = await ref
+          .read(forumRepositoryProvider)
+          .createPost(
             authorId: uid,
             authorName: user.displayName.isEmpty ? 'Learner' : user.displayName,
             title: _title.text,
             body: _body.text,
-            topic: _topic,
+            topics: _topics.toList(),
+            mentionedUids: mentioned,
           );
       if (!mounted) return;
       ref.playSfx(Sfx.post);
@@ -54,9 +71,9 @@ class _NewPostScreenState extends ConsumerState<NewPostScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _sending = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not publish the post: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not publish the post: $e')));
     }
   }
 
@@ -70,7 +87,7 @@ class _NewPostScreenState extends ConsumerState<NewPostScreen> {
           icon: const Icon(Icons.close_rounded),
           onPressed: () => context.pop(),
         ),
-        title: const Text('New post'),
+        title: const Text('New message'),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -81,20 +98,36 @@ class _NewPostScreenState extends ConsumerState<NewPostScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text('Topic', style: Theme.of(context).textTheme.titleSmall),
+                  Text(
+                    'Channels',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Pick one or more. The post appears in each of them.',
+                    style: Theme.of(context).textTheme.labelSmall
+                        ?.copyWith(color: scheme.onSurfaceVariant),
+                  ),
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      for (final t in AppConstants.forumTopics)
-                        ChoiceChip(
-                          label: Text(t),
-                          selected: _topic == t,
-                          showCheckmark: false,
-                          onSelected: (_) {
+                      for (final c in Channel.all)
+                        TintedChip(
+                          label: c.label,
+                          selected: _topics.contains(c.topic),
+                          onTap: () {
                             ref.playSfx(Sfx.tap);
-                            setState(() => _topic = t);
+                            setState(() {
+                              // Never empty: deselecting the last one would
+                              // leave the post with nowhere to go.
+                              if (_topics.contains(c.topic)) {
+                                if (_topics.length > 1) _topics.remove(c.topic);
+                              } else {
+                                _topics.add(c.topic);
+                              }
+                            });
                           },
                         ),
                     ],
@@ -126,8 +159,9 @@ class _NewPostScreenState extends ConsumerState<NewPostScreen> {
                     decoration: const InputDecoration(
                       labelText: 'Your post',
                       alignLabelWithHint: true,
-                      hintText: 'Add the details. What have you tried so far?',
+                      hintText: 'Add the details. Type @ to mention someone.',
                     ),
+                    onChanged: (_) => setState(() {}),
                     validator: (v) {
                       final value = (v ?? '').trim();
                       if (value.isEmpty) return 'Write something first';
@@ -137,18 +171,25 @@ class _NewPostScreenState extends ConsumerState<NewPostScreen> {
                       return null;
                     },
                   ),
+                  MentionSuggestions(
+                    controller: _body,
+                    people: ref.watch(forumPeopleProvider),
+                    onChanged: () => setState(() {}),
+                  ),
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      Icon(Icons.public_rounded, size: 15, color: scheme.onSurfaceVariant),
+                      Icon(
+                        Icons.public_rounded,
+                        size: 15,
+                        color: scheme.onSurfaceVariant,
+                      ),
                       const SizedBox(width: 7),
                       Expanded(
                         child: Text(
                           'Posted under your name and visible to every learner '
                           'straight away.',
-                          style: Theme.of(context)
-                              .textTheme
-                              .labelSmall
+                          style: Theme.of(context).textTheme.labelSmall
                               ?.copyWith(color: scheme.onSurfaceVariant),
                         ),
                       ),

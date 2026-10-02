@@ -15,16 +15,16 @@ void main() {
       );
     });
 
-    test('signing out of a signed-in screen lands on login', () {
+    test('signing out of a signed-in screen lands on the welcome page', () {
       // The bug this guards: a learner on /home taps sign out, and the screen
       // stayed put while Firestore reported permission-denied underneath it.
       expect(
         authRedirect(resolved: true, signedIn: false, location: Routes.home),
-        Routes.login,
+        Routes.welcome,
       );
     });
 
-    test('every signed-in screen bounces to login once signed out', () {
+    test('every signed-in screen bounces to welcome once signed out', () {
       for (final location in [
         Routes.home,
         Routes.lessons,
@@ -41,13 +41,17 @@ void main() {
       ]) {
         expect(
           authRedirect(resolved: true, signedIn: false, location: location),
-          Routes.login,
-          reason: '$location should send a signed-out learner to login',
+          Routes.welcome,
+          reason: '$location should send a signed-out learner to welcome',
         );
       }
     });
 
-    test('signed out, the auth screens are left alone', () {
+    test('signed out, the public screens are left alone', () {
+      expect(
+        authRedirect(resolved: true, signedIn: false, location: Routes.welcome),
+        isNull,
+      );
       expect(
         authRedirect(resolved: true, signedIn: false, location: Routes.login),
         isNull,
@@ -58,17 +62,22 @@ void main() {
       );
     });
 
-    test('resolved on the splash with nobody signed in goes to login', () {
+    test('resolved on the splash with nobody signed in goes to welcome', () {
       // Not left on the splash: nothing is still resolving, so staying there
       // would strand the app on a spinner forever.
       expect(
         authRedirect(resolved: true, signedIn: false, location: Routes.splash),
-        Routes.login,
+        Routes.welcome,
       );
     });
 
     test('a signed-in learner is pulled off the auth screens', () {
-      for (final location in [Routes.login, Routes.signup, Routes.splash]) {
+      for (final location in [
+        Routes.welcome,
+        Routes.login,
+        Routes.signup,
+        Routes.splash,
+      ]) {
         expect(
           authRedirect(resolved: true, signedIn: true, location: location),
           Routes.home,
