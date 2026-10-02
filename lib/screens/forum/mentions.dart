@@ -138,3 +138,33 @@ List<MentionSpan> mentionSpans(
   }
   return spans;
 }
+
+/// The people a composer can offer, from the directory and from whoever has
+/// posted, with the reader removed.
+///
+/// Both sources on purpose. The directory is the real answer — everyone with an
+/// account, whether or not they have ever written anything. Forum authors are
+/// the fallback, so the picker still works for anyone whose directory entry has
+/// not been backfilled yet, and so it degrades to the old behaviour rather than
+/// to nothing if the directory cannot be read at all.
+///
+/// The directory wins on name, because a post carries whatever name its author
+/// had when they wrote it.
+List<ForumPerson> mergePeople({
+  required List<ForumPerson> directory,
+  required List<ForumPerson> participants,
+  String? excludeUid,
+}) {
+  final byUid = <String, ForumPerson>{};
+  for (final p in participants) {
+    if (p.uid.isEmpty || p.uid == excludeUid) continue;
+    byUid[p.uid] = p;
+  }
+  for (final p in directory) {
+    if (p.uid.isEmpty || p.uid == excludeUid) continue;
+    byUid[p.uid] = p;
+  }
+  final out = byUid.values.toList()
+    ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+  return out;
+}

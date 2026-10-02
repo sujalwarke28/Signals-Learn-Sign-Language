@@ -67,10 +67,25 @@ class MentionSuggestions extends StatelessWidget {
     final scheme = theme.colorScheme;
 
     final active = activeMention(controller.value);
-    if (active == null || people.isEmpty) return const SizedBox.shrink();
+    if (active == null) return const SizedBox.shrink();
 
     final matches = _matches(active.query);
-    if (matches.isEmpty) return const SizedBox.shrink();
+
+    // Silence after typing @ reads as a broken feature. Say why the list is
+    // empty instead.
+    if (matches.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 10),
+        child: Text(
+          people.isEmpty
+              ? 'Nobody else has joined yet'
+              : 'No one here matches "@${active.query}"',
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: scheme.onSurfaceVariant,
+          ),
+        ),
+      );
+    }
 
     return Padding(
       padding: const EdgeInsets.only(top: 10),

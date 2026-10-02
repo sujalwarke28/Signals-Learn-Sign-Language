@@ -33,6 +33,12 @@ class Refs {
   CollectionReference<Map<String, dynamic>> questions(String lessonId) =>
       lesson(lessonId).collection('questions');
 
+  /// Display names only — the directory the @mention picker reads.
+  CollectionReference<Map<String, dynamic>> get publicProfiles =>
+      _db.collection('public_profiles');
+  DocumentReference<Map<String, dynamic>> publicProfile(String uid) =>
+      publicProfiles.doc(uid);
+
   CollectionReference<Map<String, dynamic>> get posts => _db.collection('forum_posts');
   DocumentReference<Map<String, dynamic>> post(String id) => posts.doc(id);
   CollectionReference<Map<String, dynamic>> replies(String postId) =>

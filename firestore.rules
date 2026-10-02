@@ -69,6 +69,25 @@ service cloud.firestore {
       }
     }
 
+    // ------------------------------------------------- public profiles
+    // Just a display name per account, so the community can address itself.
+    //
+    // `users/{uid}` stays private — it carries an email and a role, and
+    // Firestore rules cannot restrict a read to particular fields. This holds
+    // the one field everyone legitimately needs to see about everyone else,
+    // and nothing else. Writable only by its owner, and the uid is the doc id,
+    // so nobody can publish a name under someone else's account.
+    match /public_profiles/{uid} {
+      allow read: if signedIn();
+
+      allow create, update: if isSelf(uid)
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() > 0
+        && request.resource.data.displayName.size() <= 80;
+
+      allow delete: if isSelf(uid) || isAdmin();
+    }
+
     // -------------------------------------------------------------- lessons
     match /lessons/{lessonId} {
       allow read: if signedIn();

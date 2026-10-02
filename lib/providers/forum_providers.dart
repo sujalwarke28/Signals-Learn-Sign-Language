@@ -57,10 +57,33 @@ final forumChannelProvider = NotifierProvider<ForumChannel, String?>(
 /// Not a real topic — a pseudo-channel for posts naming the reader.
 const mentionsChannel = '\u0000mentions';
 
-/// Everyone who has posted, so the composer can offer them after an @.
+/// Everyone with an account, from the public directory.
+///
+/// `users/{uid}` is readable only by its owner and admins — it holds an email
+/// and a role — so the directory is a separate collection carrying nothing but
+/// a display name.
+final directoryProvider = StreamProvider<List<ForumPerson>>((ref) {
+  if (ref.watch(currentUidProvider) == null) return Stream.value(const []);
+  return ref
+      .watch(authRepositoryProvider)
+      .watchDirectory()
+      .map(
+        (rows) => [
+          for (final r in rows) ForumPerson(uid: r.uid, name: r.displayName),
+        ],
+      );
+});
+
+/// Who the composer offers after an @: everyone on the platform, plus anyone
+/// who has posted but is not in the directory yet.
 final forumPeopleProvider = Provider<List<ForumPerson>>((ref) {
   final posts = ref.watch(forumPostsProvider).value ?? const [];
-  return forumPeople(posts: posts, excludeUid: ref.watch(currentUidProvider));
+  final uid = ref.watch(currentUidProvider);
+  return mergePeople(
+    directory: ref.watch(directoryProvider).value ?? const [],
+    participants: forumPeople(posts: posts),
+    excludeUid: uid,
+  );
 });
 
 /// Posts addressed to the reader.

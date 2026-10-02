@@ -30,6 +30,7 @@ ForumPost _post(
 
 void main() {
   _titleTests();
+  _directoryTests();
 
   group('handles', () {
     test('a handle is the first name, stripped and lowercased', () {
@@ -314,6 +315,73 @@ void _titleTests() {
       // Neither is a real channel, so a message typed there goes to General.
       expect(targetChannel(null), 'General');
       expect(targetChannel(mentionsChannel), 'General');
+    });
+  });
+}
+
+/// Who the @ picker offers. The directory is the real source; forum authors
+/// are the fallback for anyone it hasn't caught up with.
+void _directoryTests() {
+  group('merging the mention list', () {
+    const inDirectory = [
+      ForumPerson(uid: 'u-ada', name: 'Ada Lovelace'),
+      ForumPerson(uid: 'u-bo', name: 'Bo Chen'),
+    ];
+
+    test('offers people who have never posted', () {
+      // The whole point: a brand-new learner is mentionable immediately.
+      final people = mergePeople(
+        directory: inDirectory,
+        participants: const [],
+      );
+      expect(people.map((p) => p.uid), ['u-ada', 'u-bo']);
+    });
+
+    test('still offers posters the directory has not caught up with', () {
+      final people = mergePeople(
+        directory: const [],
+        participants: const [ForumPerson(uid: 'u-old', name: 'Early Adopter')],
+      );
+      expect(people.map((p) => p.uid), ['u-old']);
+    });
+
+    test('a person in both appears once, with their directory name', () {
+      // A post carries whatever name its author had at the time.
+      final people = mergePeople(
+        directory: const [ForumPerson(uid: 'u1', name: 'Ada Lovelace')],
+        participants: const [ForumPerson(uid: 'u1', name: 'ada')],
+      );
+      expect(people.length, 1);
+      expect(people.single.name, 'Ada Lovelace');
+    });
+
+    test('the reader is never offered themselves', () {
+      final people = mergePeople(
+        directory: inDirectory,
+        participants: const [],
+        excludeUid: 'u-ada',
+      );
+      expect(people.map((p) => p.uid), ['u-bo']);
+    });
+
+    test('sorted by name, so the list does not reshuffle between opens', () {
+      final people = mergePeople(
+        directory: const [
+          ForumPerson(uid: 'u3', name: 'Zara'),
+          ForumPerson(uid: 'u1', name: 'Ada'),
+          ForumPerson(uid: 'u2', name: 'bo'),
+        ],
+        participants: const [],
+      );
+      expect(people.map((p) => p.name), ['Ada', 'bo', 'Zara']);
+    });
+
+    test('entries with no uid are dropped rather than offered', () {
+      final people = mergePeople(
+        directory: const [ForumPerson(uid: '', name: 'Ghost')],
+        participants: const [],
+      );
+      expect(people, isEmpty);
     });
   });
 }

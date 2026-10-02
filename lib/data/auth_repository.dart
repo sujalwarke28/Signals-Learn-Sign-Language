@@ -64,6 +64,7 @@ class AuthRepository {
         'soundEnabled': true,
         'createdAt': FieldValue.serverTimestamp(),
       });
+      await publishPublicProfile(uid, displayName.trim());
     } on FirebaseAuthException catch (e) {
       throw AuthFailure(_message(e));
     }
@@ -149,15 +150,54 @@ class AuthRepository {
   Future<void> ensureProfile(User user) async {
     final ref = _refs.user(user.uid);
     final snap = await ref.get();
-    if (snap.exists) return;
-    await ref.set({
-      'email': user.email ?? '',
-      'displayName': user.displayName ?? (user.email?.split('@').first ?? 'Learner'),
-      'role': UserRole.learner.name,
-      'soundEnabled': true,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+    final name = (snap.data()?['displayName'] as String?) ??
+        user.displayName ??
+        (user.email?.split('@').first ?? 'Learner');
+
+    if (!snap.exists) {
+      await ref.set({
+        'email': user.email ?? '',
+        'displayName': name,
+        'role': UserRole.learner.name,
+        'soundEnabled': true,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    }
+
+    // Outside the exists-guard on purpose: accounts created before the
+    // directory existed have a user document but no public profile, and this
+    // is the path every sign-in already goes through, so they backfill
+    // themselves the next time they open the app.
+    await publishPublicProfile(user.uid, name);
   }
+
+  /// Publishes the one field other learners are allowed to see: a display name.
+  ///
+  /// Failing here must never block signing in — a learner who cannot be
+  /// @mentioned yet is a much smaller problem than a learner who cannot get
+  /// into the app, which is what an uncaught permission error here would cause
+  /// on a project whose rules have not been redeployed.
+  Future<void> publishPublicProfile(String uid, String displayName) async {
+    final name = displayName.trim();
+    if (name.isEmpty) return;
+    try {
+      await _refs.publicProfile(uid).set({
+        'displayName': name.length > 80 ? name.substring(0, 80) : name,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (_) {
+      // Directory entry is best-effort; the forum still falls back to the
+      // names denormalised onto posts.
+    }
+  }
+
+  /// Everyone who has published a display name.
+  Stream<List<({String uid, String displayName})>> watchDirectory() =>
+      _refs.publicProfiles.snapshots().map((snap) => [
+            for (final d in snap.docs)
+              if ((d.data()['displayName'] as String?)?.isNotEmpty ?? false)
+                (uid: d.id, displayName: d.data()['displayName'] as String),
+          ]);
 
   Future<void> updateSoundEnabled(String uid, bool enabled) =>
       _refs.user(uid).set({'soundEnabled': enabled}, SetOptions(merge: true));
