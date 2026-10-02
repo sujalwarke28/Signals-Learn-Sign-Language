@@ -67,6 +67,23 @@ Those two role clauses are the whole security model for admin:
 so `admin` can only be granted from the Firebase console, by someone who already
 has console access. See [doc 4](04-admin-account.md).
 
+### Public profiles
+
+```
+public_profiles/{uid}
+```
+
+Readable by any signed-in learner; writable only by its owner. It holds one
+field, `displayName`, and exists so the community can address itself after an
+`@` without exposing `users/{uid}`, which carries an email and a role.
+
+Firestore rules cannot restrict a read to particular *fields*, so "let everyone
+read just the name" is only expressible as a separate collection. The uid is the
+document id, so a name cannot be published under somebody else's account, and
+the length is capped at 80 characters.
+
+See [doc 16](16-community-and-mentions.md) for how it is populated and used.
+
 ### Progress and quiz attempts
 
 ```
@@ -120,6 +137,8 @@ used to edit anyone's words.
 | `create` on `/lessons/xyz` as an admin UID | Allow |
 | `update` on `/users/{learnerUid}` setting `role: "admin"`, as that user | Deny |
 | `get` on `/users/{otherUid}` as a learner | Deny |
+| `get` on `/public_profiles/{otherUid}` as a learner | Allow |
+| `create` on `/public_profiles/{otherUid}` as a learner | Deny |
 | `update` on `/users/{uid}/attempts/{id}` as that user | Deny |
 
 ### In the app

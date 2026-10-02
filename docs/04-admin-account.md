@@ -15,7 +15,8 @@ Prerequisites: [doc 1](01-firebase-setup.md) finished, and the rules deployed.
 ## 4.1 Create the account through the app
 
 1. Run the app — `flutter run -d chrome` is the quickest way.
-2. On the login screen, tap **Create an account**.
+2. Signed out, you land on the welcome page — tap **Learn your first sign**,
+   or **Sign in** and then **Create an account**.
 3. Fill in:
    * **Your name** — this is what shows on your forum posts
    * **Email** — e.g. `admin@signals.app` (it doesn't need to be a real inbox

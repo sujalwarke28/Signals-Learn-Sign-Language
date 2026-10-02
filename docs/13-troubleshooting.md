@@ -20,6 +20,11 @@ specific to that step.
 | The app opens on a different `localhost` port every run | Expected — Flutter picks a free port. Pass `--web-port=8090` to pin it, and prefer hot reload (`r`) over relaunching — [doc 6, step 6.4](06-run-on-macbook.md) |
 | A Jenkins sign-in page on `localhost:8080` | That's Jenkins, not this app — 8080 is its default port. Run the app on another port, e.g. `--web-port=8090` |
 | `Port is already in use` | Something else holds it. Check what with `lsof -ti:8090 \| head -1 \| xargs ps -o comm= -p`; if it's an old `flutter run`, quit it with `q` |
+| The deployed site still shows the old UI | Your browser, not the deploy. Service worker + cache. Private window, or hard reload, or unregister the worker — [doc 8](08-web-deploy.md). Confirm the server is fine by comparing `curl … \| shasum` against your local `build/web/main.dart.js` |
+| `GoError: There is nothing to pop` | A back link on a route opened cold — a pasted URL, a reload, or a `go` that replaced the stack. Use `context.popOr(fallback)` instead of `context.pop()` |
+| Typing `@` offers nobody | The directory is `public_profiles`, written on sign-in. With one account there is genuinely nobody else to mention. A second learner appears once they have signed in at least once — [doc 16](16-community-and-mentions.md) |
+| `Missing or insufficient permissions` on `public_profiles` | Rules not redeployed since the directory was added: `firebase deploy --only firestore:rules` |
+| Category colours hard to tell apart in dark mode | `AppPalette.categoryTintsDark` exists for this. If you added a category, give it a dark step too — [doc 12.9](12-architecture.md) |
 | Edits don't show up after pressing `r` | Some changes can't hot reload — `main()`, `pubspec.yaml`, native/plugin code. Use `R`, or relaunch |
 | `Could not resolve the package 'signals'` | `flutter pub get` |
 

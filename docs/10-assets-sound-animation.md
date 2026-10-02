@@ -11,11 +11,12 @@ at runtime.
 | File | Family | Used for | Licence |
 | --- | --- | --- | --- |
 | `assets/fonts/NunitoVariable.ttf` | Nunito | Body text, labels, buttons | SIL Open Font License 1.1 |
-| `assets/fonts/Baloo2Variable.ttf` | Baloo2 | Headlines and titles | SIL Open Font License 1.1 |
+| `assets/fonts/OutfitVariable.ttf` | Outfit | Headlines and titles | SIL Open Font License 1.1 |
 
 Both are bundled rather than loaded through `google_fonts`, which means no
 network request on first paint and the app renders identically offline. Nunito is
-rounded and highly legible at small sizes; Baloo2 is chunky and playful, which is
+rounded and highly legible at small sizes; Outfit is geometric and low-contrast,
+set with negative tracking at display sizes, which is
 what gives the headings their character without going childish.
 
 They're declared in `pubspec.yaml` under `flutter: fonts:` and wired into the text

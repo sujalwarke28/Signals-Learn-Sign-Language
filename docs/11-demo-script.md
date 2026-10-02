@@ -18,6 +18,26 @@ designed for it.
 
 ---
 
+## Act 0 · The landing page (45s)
+
+Open the web URL **signed out**, in a private window.
+
+1. A visitor meets the pitch, not a password field. The motto — *Say hello with
+   your hands* — with the object of the sentence cycling: hello, thank you,
+   good morning, I love you.
+2. The motion behind it is the **signing space**: in sign language, meaning
+   lives in movement through the box in front of your torso. It is drawn with
+   `CustomPaint`, not an illustration, which is why it costs nothing to ship.
+3. Scroll. The argument is deliberately ordered: *you have someone in mind* →
+   *the hard part is the embarrassment, not the hands* → how it works → what is
+   inside → you are not alone → **a language, not a workaround**.
+4. Land on that last panel if anyone asks about the Deaf community. It says
+   plainly that this is somewhere to begin, not somewhere to stop, and points
+   people at Deaf teachers.
+
+> Signed-out visitors land here, not on `/login`. Three routes are public:
+> `/welcome`, `/login`, `/signup`.
+
 ## Act 1 · Admin publishes a lesson (2 min)
 
 > "New content has to reach learners without shipping a new build. Here's that."
@@ -44,13 +64,26 @@ designed for it.
 
 ## Act 2 · The learner's dashboard (1 min)
 
-Signed in as the **learner**:
+Sign in as the **admin** first, and point out that `/home` is a *console*: a
+publish action, library metrics, coverage sorted thinnest-first, and a queue of
+"things a learner would notice before you do" — lessons still on stand-in
+footage, questions with no reply. No streak, no badges. An admin never takes the
+lessons.
 
-1. **Home.** Greeting by name and time of day, the completion ring, the badge
-   strip, the per-category bars.
+Now the **learner** on the same route:
+
+1. **Home.** The canopy: greeting by name, a count that climbs to its value, and
+   the streak phrased so it never scolds — at zero it says *a good day to start
+   again*.
 2. Read out the completion number — you'll come back to it.
-3. Point at the **Keep going** card: it prefers a lesson already started over the
-   next unstarted one.
+3. The **Up next** card is the one obvious action. It prefers a lesson already
+   started over the next unstarted one.
+4. Scroll to **Your path**: the library as a route you walk. The lit section of
+   the curve *is* the completion fraction, so the picture cannot disagree with
+   the number.
+
+> Same route, same role field the security rules enforce on. The UI cannot
+> disagree with what the backend will allow.
 
 ## Act 3 · Lesson → video → quiz unlock (2 min)
 
@@ -108,13 +141,19 @@ Signed in as the **learner**:
 
 Best with two devices side by side.
 
-1. **Community** tab on the learner. Posts, topics, reply counts.
-2. Open a thread. Show the original post and its replies.
-3. **New post.** Try submitting it empty — validation on both the title and the
-   body. Fill it in, **Publish post**, hear the send cue.
-4. **On the admin device, the new post is already in the list.** No refresh.
-5. Reply to it from the admin session → it appears on the learner's thread live,
-   and the reply count on the list bumps.
+1. **Community** tab. It is laid out like a chat client — channels down the
+   side on a laptop, behind the `#` button on a phone. `#general`,
+   `#question`, `#practice-tips`, and so on.
+2. Messages are a transcript, not a stack of cards: consecutive messages from
+   the same person inside a few minutes tuck under the first.
+3. Type in the bar at the foot and send. It lands in whichever channel is open —
+   the hint names it. **On the other device it appears instantly.** No refresh.
+4. Type `@` and pick the other account. Send it.
+5. **On that device, the message is highlighted and the Mentions entry in the
+   rail carries a count.** Mentions resolve when the message is written and are
+   stored on the document, so the view is a filter over data already in memory —
+   no extra query.
+6. Point at the unread badges. Your own messages never count toward them.
 
 ## Act 7 · Polish (45s)
 
@@ -123,8 +162,12 @@ Best with two devices side by side.
    system, which is why nothing clashes in either mode.
 2. Toggle **Interaction sounds** off, tap around, back on.
 3. Show the **Admin** badge on the admin account and its absence on the learner's.
-4. **Open the web URL on a laptop.** Same app; the bottom bar becomes a side rail
-   and the lesson library goes multi-column at desktop width.
+4. **Open the web URL on a laptop.** Same app; the bottom bar becomes a side
+   rail, the lesson library goes multi-column, and the community's channel rail
+   becomes persistent instead of a drawer.
+5. If anyone asks about accessibility: turn on *Reduce Motion* in the OS. Every
+   animation in the app checks for it and renders a sensible still frame — the
+   trail at rest, the number stated plainly, no confetti.
 
 ## If asked: "is the role split actually enforced?"
 

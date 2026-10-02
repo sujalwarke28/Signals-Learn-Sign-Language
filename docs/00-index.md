@@ -21,6 +21,7 @@ first time; after that, jump straight to the one you need.
 | 13 | [`13-troubleshooting.md`](13-troubleshooting.md) | Every error we've hit, and the fix. |
 | 14 | [`14-google-sign-in.md`](14-google-sign-in.md) | Enabling the Google provider, and the Android SHA-1 fingerprint it needs. |
 | 15 | [`15-tech-stack.md`](15-tech-stack.md) | Every technology, package and tool the project uses, with resolved versions and what each does. |
+| 16 | [`16-community-and-mentions.md`](16-community-and-mentions.md) | Channels, @mentions, the `public_profiles` directory, and unread counts. |
 
 ## The two things only you can do
 

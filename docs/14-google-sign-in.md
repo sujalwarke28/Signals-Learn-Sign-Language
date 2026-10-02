@@ -125,7 +125,8 @@ Signing out clears the native Google credential as well as the Firebase session,
 so the next sign-in shows the account picker rather than silently reusing the
 last account.
 
-Getting back to the login screen takes two mechanisms, deliberately:
+Getting back to the signed-out state takes two mechanisms, deliberately
+(signing out lands on `/welcome`, not `/login`):
 
 * `confirmSignOut` navigates there directly, so leaving is a consequence of the
   tap rather than something inferred from an auth stream;
@@ -143,7 +144,7 @@ auth-gated collection **must** depend on the uid. `/lessons` is readable only
 when signed in, so `lessonsProvider` rebuilds on `currentUidProvider`. When it
 did not, its `keepAlive`d Firestore subscription outlived the session, stuck
 forever on `permission-denied`, and the dashboard rendered "Not allowed to read
-that" instead of the login screen.
+that" instead of the signed-out landing page.
 
 ---
 

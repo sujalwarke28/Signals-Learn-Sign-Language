@@ -45,9 +45,30 @@ lib/
     forum_providers.dart
     settings_providers.dart  theme mode, sound toggle
 
-  router/app_router.dart     go_router: auth redirect + StatefulShellRoute tabs
-  screens/                   one folder per feature area
-  widgets/                   shared UI: Pressable, ProgressRing, LessonCard, common.dart
+  router/app_router.dart     go_router: auth redirect, shell tabs, popOr()
+
+  screens/
+    welcome/                 the public landing page
+    dashboard/               two homes behind one route — see 12.11
+      dashboard_screen.dart  the role switch, and nothing else
+      learner_dashboard.dart
+      admin_dashboard.dart
+      lesson_path.dart       the library drawn as a route you walk
+      recall_nudge.dart      PURE: which finished lesson is worth revisiting
+      library_snapshot.dart  PURE: what an admin needs to know about the library
+    lessons/ progress/ quiz/ forum/ auth/ admin/ settings/ shell/
+      forum/channels.dart    PURE: slugs, membership, unread, title derivation
+      forum/mentions.dart    PURE: handles, parsing, resolution, spans
+      progress/practice_history.dart  PURE: attempts bucketed by calendar day
+
+  widgets/                   shared UI
+    signing_space.dart       the drawn-motion motif, CustomPaint
+    screen_canopy.dart       the header every main screen opens with
+    reveal.dart              scroll-triggered entrances
+    practice_strip.dart      14-day activity chart
+    mention_field.dart       @ autocomplete + mention rendering
+    medallion.dart count_up.dart pressable.dart progress_ring.dart
+    lesson_card.dart common.dart
 tool/                        asset generators (sounds, Lottie)
 ```
 
@@ -83,11 +104,19 @@ lessons/{lessonId}
   questions/{questionId}
     prompt, options: [4 strings], correctIndex, imageUrl?, explanation, order
 
+public_profiles/{uid}
+  displayName, updatedAt        <- the only thing learners may read about
+                                   each other; see doc 16
+
 forum_posts/{postId}
-  authorId, authorName, title, body, topic, replyCount, createdAt
+  authorId, authorName, title, body
+  topics: [string]              <- a post can sit in several channels
+  topic: string                 <- legacy single value, still written
+  mentionedUids: [uid]          <- resolved at write time
+  replyCount, createdAt
 
   replies/{replyId}
-    authorId, authorName, body, createdAt
+    authorId, authorName, body, mentionedUids, createdAt
 ```
 
 Two shape decisions worth noting:
@@ -98,6 +127,13 @@ Two shape decisions worth noting:
   obvious.
 * **Progress and attempts live under the user**, not in top-level collections.
   The rule becomes "this user only", with no query-level filtering to get wrong.
+* **Display names are duplicated into `public_profiles`** rather than opening up
+  `users/{uid}`, because Firestore cannot restrict a read to particular fields
+  and that document holds an email and a role. One field, readable by everyone
+  signed in, writable only by its owner.
+* **`mentionedUids` is denormalised onto the post.** The client already streams
+  every post, so the Mentions view is a filter over data in memory — no second
+  query and no composite index.
 
 ## 12.3 The lesson state machine
 
@@ -200,9 +236,27 @@ learner mid-quiz shouldn't be able to tab away by accident.
 
 The auth redirect holds on a splash screen until auth resolves (so a returning
 user never sees a flash of the login screen), then routes signed-out users to
-`/login` and bounces signed-in users off the auth screens. The router itself is
-built **once** and re-evaluates its redirect via a `refreshListenable` — rebuilding
-it on every auth change would tear down the navigation stack.
+**`/welcome`** — the public landing page — and bounces signed-in users off the
+public screens. Three routes are public: `/welcome`, `/login`, `/signup`. The
+router itself is built **once** and re-evaluates its redirect via a
+`refreshListenable` — rebuilding it on every auth change would tear down the
+navigation stack.
+
+`authRedirect()` is a free function with no Flutter dependency, so every rule
+above is unit-tested in `test/auth_redirect_test.dart` without standing up a
+navigator.
+
+### `popOr()`
+
+A back link can only pop a route it was pushed onto. On the web every route is
+also an address, so any screen can be opened cold — from a pasted URL, a
+bookmark, a reload, or a `go` that replaced the stack instead of growing it — and
+a bare `pop()` throws *"There is nothing to pop"*. `context.popOr(fallback)`
+pops when it can and navigates when it cannot.
+
+Sign-up's "Sign in" link uses it, because the landing page reaches sign-up with
+`go`. **Nine other call sites still use `pop()` directly** and will throw if opened
+cold on the web; converting them is a mechanical pass that has not been done.
 
 ## 12.7 Video
 
@@ -232,6 +286,22 @@ Chosen on top of that: a `ThemeExtension` (`AppColors`) carrying streak amber,
 success green and wrong red with separate light/dark values, plus one tint per
 lesson category. Those carry meaning, so they shouldn't shift with the seed.
 
+**Type.** Nunito for body, Outfit for display, with negative tracking at large
+sizes. Both bundled as variable TTFs — no `google_fonts`, no network request on
+first paint.
+
+**Category tints are mode-specific, and that is not cosmetic.** On a dark
+surface the light-mode steps sit at OKLCH lightness 0.70–0.76, above the
+0.48–0.67 band where categorical colour stays separable — categories were hard
+to tell apart in dark mode. `AppPalette.categoryTintsDark` re-steps each hue to
+L 0.645 with chroma scaled to match. Both sets are checked against the lightness
+band, chroma floor, colour-vision-deficiency separation, normal-vision
+separation, and contrast. If you change a category colour, re-check it rather
+than eyeballing it; `AppPalette.categoryTint()` picks the set by brightness.
+
+Identity is never carried by colour alone anywhere in the app: every tinted row,
+chip and bar also has its name next to it.
+
 ## 12.10 Deliberate simplifications
 
 Worth being able to name, since they're the honest answer to "what would you do
@@ -250,7 +320,62 @@ differently at scale":
   per admin write, and gains: the console can grant it with no Cloud Function.
 * **`replyCount` is a denormalised counter**, incremented in the same batch as the
   reply so it can't drift.
+* **Unread counts are device-local.** They live in `shared_preferences`, because
+  syncing them would need a `users/{uid}/channel_reads` subcollection and the
+  rules grant only `progress` and `attempts` there. The cost is that a phone and
+  a browser keep separate counts — see [doc 16](16-community-and-mentions.md).
+* **A post's title is derived from its text** when sent from the channel bar.
+  The rules require a non-empty title and a chat bar is one box, so
+  `titleFromMessage()` takes the first line or sentence. The full message is
+  always kept as the body.
 * **Progress is recalculated client-side on every stream emission** rather than
   maintained by a Cloud Function. At this data volume it's a handful of list
   operations, and it means there is exactly one definition of each number instead
   of one in Dart and one in a function.
+
+## 12.11 Two dashboards behind one route
+
+`/home` renders one of two entirely different screens depending on
+`users/{uid}.role` — the same field the security rules enforce on, so the UI
+cannot disagree with what the backend will allow.
+
+| | Learner | Admin |
+| --- | --- | --- |
+| Question it answers | What do I do right now? | What is in the library, and what needs fixing? |
+| Shape | One next action, then a path | Metrics, a coverage breakdown, a queue |
+| Corners | 24–30px | 12–16px |
+| Surfaces | Tinted gradients | Flat, hairline borders |
+| Accent | Primary violet | Tertiary |
+| Gamification | Streak, badges, confetti | None |
+
+They were one screen with an admin card bolted onto the bottom, which served
+neither: an admin never takes the lessons, so streaks and badges are addressed
+to the wrong person.
+
+### The lesson path
+
+`LessonPath` draws the library as a curve with a node per lesson, laid out on a
+sine wave down the column. The lit portion of the curve is exactly the
+completion fraction, so the picture and the number cannot disagree. The path
+draws itself on arrival, nodes land behind the line that reaches them, and the
+current node carries a slow halo.
+
+Geometry is real maths, so the counts that break it are tested: zero lessons
+collapses to `Size.zero`, one lesson cannot form a curve and the painter bails
+rather than throwing, and node positions stay inside the column at every width.
+
+## 12.12 Motion
+
+Durations 200–350ms for UI, 450–650ms for hero moments. `easeOutCubic` and
+`easeOutQuart` — **no bounce or elastic**, which read as toy-like. Entrances
+stagger 40–70ms apart.
+
+`Reveal` + `RevealScope` handle scroll-triggered entrances. `flutter_animate`
+fires on build, which is wrong for a page taller than the viewport: everything
+below the fold would finish animating before it was ever seen. The scope turns
+scroll notifications into a tick via an `InheritedNotifier`; each `Reveal`
+re-checks its own geometry and plays once.
+
+Every animated widget checks `MediaQuery.disableAnimationsOf(context)` and
+renders a sensible still frame — the trail at rest, the number stated plainly,
+no confetti. That matters more than usual in an app about accessibility.

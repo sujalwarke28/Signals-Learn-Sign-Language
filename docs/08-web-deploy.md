@@ -131,3 +131,53 @@ Two genuine differences from Android:
 | Videos won't play in Safari | Safari is strict about codecs and range requests. Test in Chrome; H.264 mp4 is the safe format |
 | Sound never plays | Check the toggle in Profile & settings, then click anywhere and retry — browser autoplay policy |
 | Works locally, fails deployed | Nearly always an unauthorised domain (8.3) |
+
+## 8.x Cache headers — read this before changing `firebase.json`
+
+Flutter's web output does **not** put a content hash in its filenames.
+`main.dart.js`, `flutter_bootstrap.js` and `index.html` have the same names in
+every build. That makes one tempting header rule actively dangerous:
+
+```json
+{ "source": "**/*.@(js|css|…)",
+  "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] }
+```
+
+`immutable` tells a browser it never needs to ask again. Applied to
+`main.dart.js`, it pins every returning visitor to whatever build they first
+loaded — for a year. The site serves new code and nobody sees it.
+
+A second, subtler trap: a rule whose `source` is `/index.html` does **not**
+match a request for `/`. Firebase matches on the request path, so the root URL
+falls through to the default `max-age=3600` and the app shell is cached for an
+hour regardless.
+
+What the config does now:
+
+| Path | Header | Why |
+| --- | --- | --- |
+| `/`, `index.html`, `flutter.js`, `flutter_bootstrap.js`, `main.dart.js`, `flutter_service_worker.js`, `manifest.json`, `version.json` | `no-cache, must-revalidate` | Stable filenames; must be re-checked every load. ETags make that a 304, so it costs almost nothing. |
+| `/assets/**`, `/canvaskit/**`, `/icons/**` | `max-age=86400, must-revalidate` | A day, not a year, and still revalidated |
+
+If you ever reintroduce long caching, only do it for paths that carry a content
+hash — and Flutter's default output has none.
+
+### After deploying, you may still see the old build
+
+The service worker caches the app shell and answers from its own cache before
+consulting the network. A plain refresh asks the worker, not the server. To see
+what a new visitor gets:
+
+* A private window, or
+* Hard reload (`Cmd+Shift+R`), or
+* DevTools → Application → Service Workers → **Unregister**, then Storage →
+  **Clear site data**
+
+To check the server rather than your browser, compare hashes directly:
+
+```bash
+curl -s https://YOUR-PROJECT.web.app/main.dart.js | shasum
+shasum build/web/main.dart.js
+```
+
+Matching hashes mean the deploy worked and anything stale is local.

@@ -300,7 +300,9 @@ The full script with what to say at each step is in
 
 **Community, live**
 15. **Community** → open a thread → reply.
-16. **New post** → try submitting empty (validation) → publish.
+16. Send a message from the bar at the foot of a channel; type `@` to mention
+    someone. The `+` beside the bar opens the longer composer, for a post that
+    wants its own title or several channels.
 17. On the other device, **the post and reply appear without a refresh**.
 
 **Polish**
@@ -367,7 +369,7 @@ All in [`lib/core/constants.dart`](lib/core/constants.dart):
 | `passThresholdPercent` | 70 | Score needed to pass a lesson quiz |
 | `videoCompleteFraction` | 0.95 | How much of a video counts as watched |
 | `maxVideoBytes` | 100 MB | Upload cap, matching Cloudinary's free tier |
-| `categories`, `difficulties`, `forumTopics` | — | Options in the admin and post forms |
+| `categories`, `difficulties`, `forumTopics` | — | Options in the admin form; `forumTopics` is also the channel list |
 
 ---
 
@@ -408,7 +410,7 @@ Full walkthrough, data model and design decisions:
 
 ### Assets
 
-Fonts are bundled (Nunito + Baloo2, both SIL OFL) so nothing is fetched at
+Fonts are bundled (Nunito + Outfit, both SIL OFL) so nothing is fetched at
 runtime. The six sound cues and the confetti animation are **generated from
 scratch** by the scripts in `tool/` — original, royalty-free, and not silent stubs.
 Regenerate or replace them per
