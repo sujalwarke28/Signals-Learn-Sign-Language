@@ -22,6 +22,7 @@ first time; after that, jump straight to the one you need.
 | 14 | [`14-google-sign-in.md`](14-google-sign-in.md) | Enabling the Google provider, and the Android SHA-1 fingerprint it needs. |
 | 15 | [`15-tech-stack.md`](15-tech-stack.md) | Every technology, package and tool the project uses, with resolved versions and what each does. |
 | 16 | [`16-community-and-mentions.md`](16-community-and-mentions.md) | Channels, @mentions, the `public_profiles` directory, and unread counts. |
+| 17 | [`17-case-study-report.md`](17-case-study-report.md) | **Case Study 57 submission report** — problem, solution, impact, architecture and workflow diagrams. |
 
 ## The two things only you can do
 
