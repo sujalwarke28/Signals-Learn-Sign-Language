@@ -24,6 +24,7 @@ first time; after that, jump straight to the one you need.
 | 16 | [`16-community-and-mentions.md`](16-community-and-mentions.md) | Channels, @mentions, the `public_profiles` directory, and unread counts. |
 | 17 | [`17-case-study-report.md`](17-case-study-report.md) | **Case Study 57 submission report** — problem, solution, impact, architecture and workflow diagrams. |
 | — | [`viva.md`](viva.md) | **Viva preparation** — 77 likely questions with answers, each pointing at the file that backs it. |
+| — | [`map.md`](map.md) | **Repository map** — what every folder and config file does, and where the code for any given thing lives. |
 
 ## The two things only you can do
 
