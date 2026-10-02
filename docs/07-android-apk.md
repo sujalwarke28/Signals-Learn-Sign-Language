@@ -140,4 +140,4 @@ project.
 | `Missing or insufficient permissions` in the app | Rules not deployed — [doc 9](09-firestore-rules.md) |
 | Videos won't play but everything else works | Check the `INTERNET` permission survived in `android/app/src/main/AndroidManifest.xml` |
 | Uploads fail only on the phone | Cloudinary values weren't compiled in — check `app_config.dart` or your `--dart-define` flags |
-| `minSdkVersion` error | `minSdk` must be 23+ for firebase_auth; it's set in `android/app/build.gradle.kts` |
+| `minSdkVersion` error | `firebase_auth` needs 23+. The project inherits `flutter.minSdkVersion` (24 on Flutter 3.47) in `android/app/build.gradle.kts` — don't pin it lower |

@@ -14,7 +14,7 @@ specific to that step.
 | `flutterfire: command not found` | `export PATH="$PATH":"$HOME/.pub-cache/bin"` |
 | `Unable to locate Android SDK` | `flutter config --android-sdk <path>` — [doc 3](03-android-sdk-setup.md) |
 | `Execution failed for task ':app:processDebugGoogleServices'` | `google-services.json` must be at `android/app/`, not `android/` |
-| `minSdkVersion 21 cannot be smaller than version 23` | `minSdk` is set to 23 in `android/app/build.gradle.kts` for firebase_auth — don't lower it |
+| `minSdkVersion 21 cannot be smaller than version 23` | `firebase_auth` needs API 23+. `android/app/build.gradle.kts` uses `flutter.minSdkVersion`, which Flutter 3.47 sets to 24 — so don't override it with anything lower |
 | Gradle hangs on first build | Normal, it's downloading. Later builds are fast |
 | Weird build errors after changing dependencies | `flutter clean && flutter pub get` |
 | The app opens on a different `localhost` port every run | Expected — Flutter picks a free port. Pass `--web-port=8090` to pin it, and prefer hot reload (`r`) over relaunching — [doc 6, step 6.4](06-run-on-macbook.md) |
