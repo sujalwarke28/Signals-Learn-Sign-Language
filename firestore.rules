@@ -1,0 +1,125 @@
+rules_version = '2';
+
+// Signals security rules.
+//
+// The shape of the trust model:
+//   * lessons + their questions  -> world-readable to signed-in users, writable
+//                                   only by an admin
+//   * users/{uid} and everything under it -> that user only
+//   * forum posts and replies    -> readable by any signed-in user, each
+//                                   document writable only by its author
+//
+// The `role` field is the pivot. A user may not change their own role, so admin
+// can only be granted from the Firebase console (or the Admin SDK). The client
+// UI hiding admin screens is cosmetic; these rules are the enforcement.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    // One extra document read per admin write. Fine at this scale, and it keeps
+    // the role in Firestore rather than in a custom claim that would need a
+    // Cloud Function to set.
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // ---------------------------------------------------------------- users
+    match /users/{uid} {
+      allow read: if isSelf(uid) || isAdmin();
+
+      // A new profile must claim the learner role. This is what stops someone
+      // signing up straight into admin.
+      allow create: if isSelf(uid)
+        && request.resource.data.role == 'learner'
+        && request.resource.data.email is string
+        && request.resource.data.displayName is string;
+
+      // Self-updates may touch anything except the role.
+      allow update: if isSelf(uid)
+        && request.resource.data.role == resource.data.role;
+
+      allow delete: if false;
+
+      // Progress and attempts are private to the learner. They're also the raw
+      // material for every number on the Progress screen, so nobody else may
+      // write them.
+      match /progress/{lessonId} {
+        allow read, write: if isSelf(uid);
+      }
+
+      match /attempts/{attemptId} {
+        allow read: if isSelf(uid);
+        // Attempts are an append-only log: create, never edit or delete, so a
+        // score can't be retroactively improved.
+        allow create: if isSelf(uid)
+          && request.resource.data.score is int
+          && request.resource.data.total is int
+          && request.resource.data.score >= 0
+          && request.resource.data.score <= request.resource.data.total;
+        allow update, delete: if false;
+      }
+    }
+
+    // -------------------------------------------------------------- lessons
+    match /lessons/{lessonId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+
+      match /questions/{questionId} {
+        // Learners need to read questions to take the quiz. The correct answer
+        // travels with them — this is a learning app, not an exam invigilator,
+        // and the same data is needed to show the explanation afterwards.
+        allow read: if signedIn();
+        allow create, update, delete: if isAdmin();
+      }
+    }
+
+    // ----------------------------------------------------------- forum
+    match /forum_posts/{postId} {
+      allow read: if signedIn();
+
+      allow create: if signedIn()
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 120
+        && request.resource.data.body is string
+        && request.resource.data.body.size() > 0
+        && request.resource.data.body.size() <= 2000
+        && request.resource.data.replyCount == 0;
+
+      // Anyone signed in may bump replyCount (that's how replying works), but
+      // only the author or an admin may change the post itself.
+      allow update: if signedIn() && (
+        request.auth.uid == resource.data.authorId
+        || isAdmin()
+        || request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['replyCount'])
+      );
+
+      allow delete: if signedIn()
+        && (request.auth.uid == resource.data.authorId || isAdmin());
+
+      match /replies/{replyId} {
+        allow read: if signedIn();
+        allow create: if signedIn()
+          && request.resource.data.authorId == request.auth.uid
+          && request.resource.data.body is string
+          && request.resource.data.body.size() > 0
+          && request.resource.data.body.size() <= 2000;
+        allow update: if signedIn() && request.auth.uid == resource.data.authorId;
+        allow delete: if signedIn()
+          && (request.auth.uid == resource.data.authorId || isAdmin());
+      }
+    }
+  }
+}

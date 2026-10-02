@@ -1,0 +1,17 @@
+# Static analysis configuration. Run with `flutter analyze`.
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - build/**
+    - android/**
+    - web/**
+
+linter:
+  rules:
+    # Every repository here takes public named parameters and stores them in
+    # private fields; an initializing formal would expose `_db:` to callers.
+    prefer_initializing_formals: false
+    # `(_, __)` in a callback with several ignored positional parameters is
+    # clearer about how many it takes than reusing a single `_`.
+    unnecessary_underscores: false

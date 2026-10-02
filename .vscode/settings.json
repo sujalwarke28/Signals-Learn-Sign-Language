@@ -1,0 +1,29 @@
+{
+  // Nothing in this project needs Java/Gradle language tooling: android/ holds a
+  // Kotlin MainActivity plus generated Java, and the Flutter tool drives Gradle
+  // itself. Every setting below turns off an editor-side Gradle importer. The
+  // Flutter build is unaffected -- `flutter build apk` and ./gradlew both work.
+
+  // The Java language server imports android/ and fails: its importer makes
+  // AGP's declarable-only configurations (testApi and friends) resolvable to
+  // build a classpath, which Gradle 9 rejects because AGP 9 locks those
+  // configurations to the "Dependency Scope" role.
+  "java.import.gradle.enabled": false,
+
+  // The Gradle Build Server (shipped by the Gradle for Java extension) imports
+  // the android/ build and then probes each subproject directory on its own.
+  // Flutter plugin android/ folders are NOT standalone Gradle builds -- they
+  // each carry a settings.gradle naming themselves rootProject, but their
+  // build scripts request `com.android.library` with no version and read
+  // `flutter.compileSdkVersion`, both of which only resolve when
+  // dev.flutter.flutter-plugin-loader includes them as subprojects of the app.
+  // Configured standalone they fail, which is where the "root project
+  // 'package_info_plus'" / "root project 'audioplayers_android'" errors come
+  // from. All ten plugins fail this way; only the noisiest get reported.
+  "java.gradle.buildServer.enabled": "off",
+
+  // Same extension, separate mechanism: stop the Gradle task explorer from
+  // auto-detecting and configuring build files it finds.
+  "gradle.autoDetect": "off",
+  "gradle.nestedProjects": false
+}
