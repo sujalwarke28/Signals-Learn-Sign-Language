@@ -25,11 +25,11 @@ Figures below were read off the project on **2 October 2026**, not from memory.
 | Web hosting | Firebase Hosting |
 | Android build | Gradle 9.3.1 · AGP 9.1.0 · Kotlin 2.4.0 · JDK 17 |
 | Target platforms | Android 7.0+ and web. No iOS. |
-| Tests | `flutter_test` — 60 tests across 8 files |
+| Tests | `flutter_test` — 154 tests across 16 files |
 | Lints | `flutter_lints` 6.0.0 |
 
-Size: **57 Dart files, ~11,480 lines** under `lib/`, plus **921 lines** of tests.
-The release APK is ~63 MB.
+Size: **78 Dart files, ~16,300 lines** under `lib/`, plus **~2,260 lines** of
+tests. The release APK is ~63 MB universal, or ~24 MB built per-ABI.
 
 ---
 
@@ -89,8 +89,8 @@ built the APK.
 
 | Package | Version | What it does here |
 | --- | --- | --- |
-| `flutter_animate` | 4.5.2 | Entrance animations and the looping streak-flame pulse, declared inline rather than via explicit `AnimationController`s. |
-| `lottie` | 3.6.1 | The confetti burst on passing a quiz. |
+| `flutter_animate` | 4.5.2 | Entrance and scroll-reveal animations, declared inline rather than via explicit `AnimationController`s. The hand-written painters (the landing-page trail, the lesson path, the current-node halo) use real controllers, because they drive custom geometry rather than a widget property. |
+| `lottie` | 3.6.1 | The confetti burst on passing a quiz, and on the dashboard once every lesson is done. |
 | `cupertino_icons` | 1.0.9 | Icon font (tree-shaken to 1.8 KB at build time). |
 | `intl` | 0.20.3 | Date formatting on the progress screen and forum list. |
 
@@ -98,7 +98,7 @@ built the APK.
 
 | Package | Version | What it does here |
 | --- | --- | --- |
-| `flutter_test` | SDK | All 60 tests. |
+| `flutter_test` | SDK | All 154 tests. |
 | `flutter_lints` | 6.0.0 | The rule set behind `analysis_options.yaml`. The project analyzes clean — zero issues. |
 
 ---
@@ -182,25 +182,35 @@ No Android Studio is involved; the SDK was installed as command-line tools only
 
 ## 15.6 Firestore data model
 
-Seven collections, enforced by [`firestore.rules`](../firestore.rules):
+Eight collections, enforced by [`firestore.rules`](../firestore.rules):
 
 ```
 users/{uid}
 users/{uid}/progress/{lessonId}
 users/{uid}/attempts/{attemptId}
+public_profiles/{uid}                 <- display name only
 lessons/{lessonId}
 lessons/{lessonId}/questions/{questionId}
 forum_posts/{postId}
 forum_posts/{postId}/replies/{replyId}
 ```
 
+`public_profiles` exists because `users/{uid}` holds an email and a role, and
+Firestore rules cannot restrict a read to particular fields — so "everyone may
+read everyone's display name" is only expressible as a second collection. It is
+what the `@mention` picker reads. Posts additionally carry `topics[]` (a post
+can sit in several channels) and `mentionedUids[]`, resolved when the message is
+written so the Mentions view needs no extra query. See
+[doc 16](16-community-and-mentions.md).
+
 One composite index, in [`firestore.indexes.json`](../firestore.indexes.json):
 `attempts` on `lessonId` ascending + `createdAt` descending, which backs the
 "most recent attempt for this lesson" query.
 
 The rules enforce that a learner can read and write only their own `users/{uid}`
-subtree; that `lessons` and their `questions` are readable by any signed-in user
-but writable only by an admin; and that a forum post may be edited or deleted
+subtree; that a learner may publish a display name only under their own uid in
+`public_profiles`, which anyone signed in may read; that `lessons` and their
+`questions` are readable by any signed-in user but writable only by an admin; and that a forum post may be edited or deleted
 only by its author or an admin — with one carve-out, so any signed-in user may
 change `replyCount` alone, which is how replying works. Nothing is readable
 while signed out. Field-by-field explanation is in
@@ -216,9 +226,9 @@ while signed out. Field-by-field explanation is in
 | `lib/models/` | 7 | Plain data classes with `fromDoc`/`toMap`. No logic beyond derived getters. |
 | `lib/data/` | 8 | Repositories — the only code that touches Firestore or Cloudinary. |
 | `lib/providers/` | 6 | Riverpod wiring: streams in, derived state out. |
-| `lib/screens/` | 22 | One directory per feature area: auth, dashboard, lessons, quiz, progress, forum, settings, admin, shell. |
-| `lib/widgets/` | 6 | Shared UI — cards, tiles, the progress ring, the press-and-sound wrapper. |
-| `lib/core/` | 4 | Theme, sound service, config, constants. |
+| `lib/screens/` | 36 | One directory per feature area: welcome, auth, dashboard, lessons, quiz, progress, forum, settings, admin, shell. |
+| `lib/widgets/` | 13 | Shared UI — cards, tiles, rings, the press-and-sound wrapper, and the hand-drawn motifs. |
+| `lib/core/` | 5 | Theme, sound service, config, constants. |
 | `lib/router/` | 1 | All routes and the auth redirect. |
 
 The rule the layout follows: screens never import `cloud_firestore`. Widgets
@@ -248,11 +258,17 @@ regeneration commands are in [doc 10](10-assets-sound-animation.md).
 Fonts are bundled rather than fetched from Google Fonts at runtime, so the app
 renders correctly offline and on first launch.
 
+**The distinctive visuals are not assets.** The landing-page trail
+(`signing_space.dart`), the lesson path (`lesson_path.dart`) and the practice
+chart (`practice_strip.dart`) are drawn with `CustomPaint` and `PathMetric`.
+Nothing to license, nothing to download, and they re-colour themselves from the
+theme in either brightness.
+
 ---
 
 ## 15.9 Testing and quality
 
-60 tests in 8 files, all passing, with the analyzer reporting zero issues.
+154 tests in 16 files, all passing, with the analyzer reporting zero issues.
 
 | File | Covers |
 | --- | --- |
@@ -264,11 +280,27 @@ renders correctly offline and on first launch.
 | `resume_point_test.dart` | Where a part-watched video resumes |
 | `hero_tag_test.dart` | A regression: shell branches colliding on one Hero tag |
 | `video_screen_layout_test.dart` | The video screen laying out even when the player can't load |
+| `dashboard_logic_test.dart` | Which finished lesson is worth revisiting; what the admin console flags |
+| `dashboard_role_test.dart` | A learner never sees the console, an admin never sees the badges |
+| `lesson_path_test.dart` | Path geometry: 0 and 1 lessons, and nodes staying inside the column |
+| `forum_mentions_test.dart` | Handles, the email that isn't a mention, shared first names, channels, unread rules, derived titles |
+| `practice_history_test.dart` | Attempts bucketed by calendar day, including either side of midnight |
+| `main_screens_layout_test.dart` | Library, progress and community at four viewport sizes |
+| `welcome_screen_layout_test.dart` | The landing page at five viewport sizes, and with reduced motion |
+| `pop_or_test.dart` | A back link on a route that was opened cold |
 
 The pattern worth noting: the logic that would be awkward to test through a
 widget is extracted into pure functions — `authRedirect`, `watchActionFor`,
-`Routes.isRewatch`, `ProgressSummary.from` — so the tests need neither a live
-Firebase nor a mounted navigator.
+`Routes.isRewatch`, `ProgressSummary.from`, and more recently `recallCandidate`,
+`LibrarySnapshot.from`, `practiceHistory`, `resolveMentions`, `unreadIn` and
+`titleFromMessage` — so the tests need neither a live Firebase nor a mounted
+navigator.
+
+The layout tests exist because this project has repeatedly shipped unbounded-
+constraint bugs that only appear at viewport sizes nobody develops at. Two were
+caught by these tests rather than by a user: a hero that overflowed by 61px on a
+360×640 phone, and a badge tile that overflowed its row by 9px whenever its
+label wrapped to a third line.
 
 Run them with `flutter test`, and `flutter analyze` for the lints.
 
@@ -296,7 +328,7 @@ taking the app offline mid-assessment. The web build covers anyone on an iPhone.
 flutter --version          # expect 3.47.2 / Dart 3.13.2
 flutter pub get
 flutter analyze            # expect: No issues found!
-flutter test               # expect: 60 tests passed
+flutter test               # expect: 154 tests passed
 flutter build apk --release
 ```
 
