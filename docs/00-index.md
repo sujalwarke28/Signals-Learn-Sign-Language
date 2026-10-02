@@ -23,7 +23,7 @@ first time; after that, jump straight to the one you need.
 | 15 | [`15-tech-stack.md`](15-tech-stack.md) | Every technology, package and tool the project uses, with resolved versions and what each does. |
 | 16 | [`16-community-and-mentions.md`](16-community-and-mentions.md) | Channels, @mentions, the `public_profiles` directory, and unread counts. |
 | 17 | [`17-case-study-report.md`](17-case-study-report.md) | **Case Study 57 submission report** — problem, solution, impact, architecture and workflow diagrams. |
-| — | [`viva.md`](viva.md) | **Viva preparation** — 77 likely questions with answers, each pointing at the file that backs it. |
+| — | [`viva.md`](viva.md) | **Viva preparation** — 122 questions with answers, including Dart and Flutter fundamentals, each pointing at the file that backs it. |
 | — | [`map.md`](map.md) | **Repository map** — what every folder and config file does, and where the code for any given thing lives. |
 
 ## The two things only you can do

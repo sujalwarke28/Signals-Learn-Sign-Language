@@ -20,7 +20,10 @@ show the code.
 12. [Testing](#12-testing)
 13. [Building and deploying](#13-building-and-deploying)
 14. [Limitations and honest answers](#14-limitations-and-honest-answers)
-15. [Hard questions](#15-hard-questions)
+15. [Dart language questions](#15-dart-language-questions)
+16. [Flutter framework questions](#16-flutter-framework-questions)
+17. [Things you did *not* use — and why](#17-things-you-did-not-use--and-why)
+18. [Hard questions](#18-hard-questions)
 
 ---
 
@@ -947,7 +950,568 @@ Functions and therefore the paid plan, which would end the free-tier property.
 
 ---
 
-## 15. Hard questions
+## 15. Dart language questions
+
+### Q. What is Dart and why does Flutter use it?
+
+Dart is a language by Google, designed for building user interfaces. Flutter
+uses it for three reasons that matter:
+
+1. **It compiles two ways.** During development it uses **JIT** (just-in-time),
+   which is what makes hot reload possible. For release it uses **AOT**
+   (ahead-of-time) to native machine code, so the shipped app is fast.
+2. **It compiles to JavaScript**, which is how the same code runs on the web.
+3. **Garbage collection is tuned for UI work** — short-lived objects (widgets
+   get rebuilt constantly) are cheap to allocate and collect.
+
+### Q. What is hot reload and how is it different from hot restart?
+
+| | What it does | When it fails |
+| --- | --- | --- |
+| **Hot reload** (`r`) | Injects changed code into the running app and rebuilds the widget tree. **State is kept** | Changes to `main()`, global variables, `pubspec.yaml`, or native code |
+| **Hot restart** (`R`) | Restarts the Dart VM. **State is lost**, but the app does not recompile from scratch | Native/plugin changes still need a full rebuild |
+
+Possible because of the JIT compiler in debug mode. A release build has no hot
+reload at all.
+
+### Q. What is null safety?
+
+Dart distinguishes between a type that can be null and one that cannot:
+
+- `String name` — can **never** be null. The compiler guarantees it
+- `String? name` — may be null, and the compiler forces you to handle that
+
+This is **sound** null safety: if the compiler says it cannot be null, the
+runtime does not need to check.
+
+**In this project:** `AppUser? user` on the dashboard is nullable because auth
+may not have resolved yet, which is why you see `user?.firstName ?? 'there'`.
+
+### Q. Explain `var`, `final`, `const` and `late`.
+
+| Keyword | Meaning |
+| --- | --- |
+| `var` | Type inferred, value can change |
+| `final` | Set **once at runtime**, cannot be reassigned |
+| `const` | **Compile-time** constant. Baked into the binary before the app runs |
+| `late` | Non-nullable, but initialised later than its declaration |
+
+**The `final` vs `const` distinction matters:**
+
+```dart
+final now = DateTime.now();   // fine — computed at runtime
+const now = DateTime.now();   // ERROR — not knowable at compile time
+```
+
+**`late` in this project:** `lib/widgets/signing_space.dart` declares
+`late final AnimationController _c` because the controller needs `vsync: this`,
+which does not exist until the State object is constructed.
+
+### Q. Why does `const` matter so much in Flutter specifically?
+
+Because a `const` widget is **created once and reused forever**. When Flutter
+rebuilds a tree, it can see that a `const` widget is identical to the previous
+one and skip rebuilding that entire subtree.
+
+That is why you see `const SizedBox(height: 16)` everywhere in this codebase
+rather than `SizedBox(height: 16)`. It is not style — it is a measurable
+performance difference in a tree that rebuilds on every stream emission.
+
+### Q. What is a `Future`? What does `async`/`await` do?
+
+A **`Future`** is a promise of a value that is not ready yet — a network call, a
+database write, reading a file.
+
+`async` marks a function as returning a Future. `await` pauses inside that
+function until the Future completes, so asynchronous code **reads top to
+bottom** instead of nesting callbacks.
+
+**In this project:** every repository write returns a Future —
+`Future<void> submitAttempt(...)`.
+
+### Q. What is a `Stream`, and how is it different from a `Future`?
+
+| | Delivers |
+| --- | --- |
+| `Future` | **One** value, once |
+| `Stream` | **Many** values, over time |
+
+A Future is ordering a parcel. A Stream is a magazine subscription.
+
+**This is the single most important concept in the project.** Firestore's
+`.snapshots()` returns a Stream, so when a lesson is published, a new value
+arrives down that stream and the UI rebuilds. If it returned a Future, the app
+would need a refresh button.
+
+### Q. What is a mixin? Do you use one?
+
+A mixin lets a class reuse code from multiple sources without multiple
+inheritance — `class A extends B with C, D`.
+
+**Used in this project:** `SingleTickerProviderStateMixin` in
+`lib/widgets/signing_space.dart`, and `TickerProviderStateMixin` in
+`lib/screens/dashboard/lesson_path.dart` (which has two controllers, hence the
+plural version). They give the State object the ability to drive animations in
+step with the screen's refresh rate.
+
+### Q. What is an extension method?
+
+It adds a method to a type **you do not own**, without subclassing it.
+
+**Used in this project:** `extension PopOr on BuildContext` in
+`lib/router/app_router.dart` adds `context.popOr(fallback)` to Flutter's own
+`BuildContext`. Also `extension SfxRef on Ref` in
+`lib/providers/settings_providers.dart`, which adds `ref.playSfx(...)`.
+
+### Q. What are records? (Dart 3)
+
+A lightweight way to return several values without declaring a class.
+
+**Used in this project:**
+
+```dart
+// lib/data/auth_repository.dart — a named record
+Stream<List<({String uid, String displayName})>> watchDirectory()
+
+// lib/widgets/common.dart — destructured from a switch
+final (bg, fg, icon) = switch (status) { ... };
+```
+
+Before records you would have declared a class or returned a `Map`, losing type
+safety.
+
+### Q. What is pattern matching / a switch expression? (Dart 3)
+
+A `switch` that **returns a value** rather than executing statements, and which
+the compiler checks for exhaustiveness.
+
+**Used in this project** — `lib/screens/dashboard/recall_nudge.dart`:
+
+```dart
+String agoLabel(int days) => switch (days) {
+      <= 0 => 'today',
+      1 => 'yesterday',
+      < 14 => '$days days ago',
+      _ => 'a while back',
+    };
+```
+
+Note it matches on **ranges**, not just equality.
+
+### Q. What is a factory constructor?
+
+A constructor that does not have to create a new instance — it can return a
+cached one, a subclass, or build the object from something else.
+
+**Used throughout this project:** every model has
+`factory Lesson.fromDoc(DocumentSnapshot doc)`, which converts a Firestore
+document into a Dart object. It is a factory because it needs logic — handling
+missing fields, type conversions — before it can construct anything.
+
+### Q. What are named, optional and required parameters?
+
+```dart
+const LessonCard({
+  super.key,                  // optional named
+  required this.lesson,       // required named
+  this.index = 0,             // optional named with a default
+});
+```
+
+Flutter uses named parameters heavily because a widget with eight positional
+arguments would be unreadable at the call site.
+
+### Q. What is cascade notation (`..`)?
+
+Calls several methods on the same object without repeating its name:
+
+```dart
+final path = Path()
+  ..moveTo(x, y)
+  ..cubicTo(...)
+  ..close();
+```
+
+**Used in** `lib/screens/dashboard/lesson_path.dart` for building paths.
+
+### Q. What are collection-if and collection-for?
+
+Conditionals and loops **inside** a list literal — very common in Flutter because
+widget children are lists:
+
+```dart
+children: [
+  const Header(),
+  if (isAdmin) const AdminCard(),      // collection-if
+  for (final c in categories)          // collection-for
+    CategoryRow(stats: c),
+  ...moreWidgets,                      // spread
+]
+```
+
+All three appear throughout `lib/screens/`.
+
+### Q. What is an Isolate? Do you use one?
+
+Dart is **single-threaded** — it has one event loop. An Isolate is a separate
+thread with its own memory, which can only communicate by passing messages (no
+shared memory, so no locks and no race conditions).
+
+**Not used in this project**, deliberately. Isolates are for CPU-heavy work that
+would block the UI — image processing, parsing a huge file. Everything heavy
+here is **I/O**, not CPU: waiting on Firestore or on a network upload. `await`
+already keeps those off the UI thread.
+
+**If asked when I would use one:** if I were decoding video frames or running
+on-device sign recognition, that would go in an Isolate via `compute()`.
+
+---
+
+## 16. Flutter framework questions
+
+### Q. What does "everything is a widget" mean?
+
+In Flutter, the UI is a tree of widgets. Not just visible things like buttons —
+padding is a widget, alignment is a widget, even the theme is a widget.
+
+A widget is **not** the thing on screen. It is a lightweight, immutable
+*description* of what should be on screen. Flutter throws them away and rebuilds
+them constantly; they are cheap by design.
+
+### Q. StatelessWidget vs StatefulWidget?
+
+| | Use when |
+| --- | --- |
+| `StatelessWidget` | The widget's appearance depends only on its inputs. Given the same inputs, it always looks the same |
+| `StatefulWidget` | The widget has internal data that changes over time — a text field's contents, an animation's position, whether something is expanded |
+
+**In this project:** most screens are `StatelessWidget` or `ConsumerWidget`,
+because their data comes from Riverpod rather than from internal state.
+`StatefulWidget` appears where there is genuinely local state — the search field
+in the lesson library, the animation controllers in `lesson_path.dart`.
+
+### Q. Why is the State separate from the StatefulWidget?
+
+Because **widgets are destroyed and rebuilt constantly**, but state must
+survive that. The widget is immutable and disposable; the `State` object
+persists across rebuilds and is attached to the element tree instead.
+
+### Q. What are the three trees?
+
+This is a favourite advanced question.
+
+| Tree | What it is |
+| --- | --- |
+| **Widget tree** | Your code. Immutable descriptions. Rebuilt constantly, cheap |
+| **Element tree** | The bridge. Holds State objects, tracks *which* widget is at each position, decides what actually changed |
+| **Render tree** | `RenderObject`s. Does layout, painting and hit testing. Expensive, so Flutter avoids recreating these |
+
+**Why it matters:** when you call `setState`, Flutter rebuilds widgets, but the
+element tree compares old and new, and only the parts that genuinely changed
+touch the render tree. That is what makes rebuilding "the whole screen" cheap.
+
+### Q. What is a BuildContext?
+
+A handle to a widget's **location in the element tree**. It is how a widget
+finds things above it — `Theme.of(context)`, `MediaQuery.of(context)`,
+`Navigator.of(context)` all walk *up* the tree from that position.
+
+**Common exam trap:** using a `context` after the widget is gone. That is why
+async code in this project checks `if (!mounted) return;` before touching
+context — for example in `lib/screens/forum/channel_composer.dart`.
+
+### Q. What is a Key, and when do you need one?
+
+Keys preserve identity when widgets of the same type are reordered or
+swapped. Without one, Flutter matches widgets by type and position, so
+reordering a list can attach the wrong state to the wrong item.
+
+**Used in this project:**
+
+- `ValueKey(_i)` on the cycling hero word in `welcome_screen.dart`, so
+  `AnimatedSwitcher` knows the text genuinely changed and should animate
+- `GlobalKey<FormState>` in the login and add-lesson forms, to call `validate()`
+  from outside the form
+- `GlobalKey<NavigatorState>` in `app_router.dart` for the root and shell
+  navigators
+
+**`GlobalKey` caution:** expensive, and gives access across the whole tree. Only
+use it when you genuinely need to reach a widget from outside.
+
+### Q. What are the StatefulWidget lifecycle methods?
+
+| Method | When it runs |
+| --- | --- |
+| `initState()` | Once, when the State is created. Set up controllers and listeners |
+| `didChangeDependencies()` | After `initState`, and **again** whenever an inherited widget it depends on changes |
+| `build()` | Every rebuild |
+| `didUpdateWidget()` | When the parent rebuilds with new configuration |
+| `dispose()` | When the widget is removed. **Must** release controllers, or you leak |
+
+**Used subtly in this project:** `lib/widgets/reveal.dart` relies on
+`didChangeDependencies` firing every time an `InheritedNotifier` ticks, which is
+how scroll-triggered reveals re-check their position.
+
+### Q. Explain Flutter's layout model.
+
+The one-line version, which is worth memorising:
+
+> **Constraints go down. Sizes go up. Parent sets position.**
+
+1. A parent passes **constraints** (min/max width and height) to its child
+2. The child picks its own **size** within those constraints and reports back
+3. The **parent** decides where to place it
+
+**Why it matters practically:** a widget cannot ask "how big is the screen?" —
+it only knows its constraints. If a parent gives **unbounded** constraints (as a
+scrolling column does vertically) and the child tries to fill them, you get the
+classic *"BoxConstraints forces an infinite width"* error. **This project hit
+that exact bug twice** — both caught by the layout tests.
+
+### Q. Why did your hero section overflow, and how did you fix it?
+
+Honest answer, and a good one to have ready:
+
+- It was a **fixed-height** box with a vertically centred column inside it
+- On a short screen, or at a large OS font scale, the column needed more room
+  than the box allowed, so it overflowed by 61 pixels
+- **Fix:** use a `ConstrainedBox` with a **minimum** height instead. The content
+  now determines the real height and can grow; the minimum only stops it
+  collapsing
+
+### Q. Row, Column, Stack, Expanded, Flexible — what is the difference?
+
+| Widget | Does |
+| --- | --- |
+| `Row` / `Column` | Lay children out horizontally / vertically |
+| `Stack` | Overlap children, positioned by `Positioned` or alignment |
+| `Expanded` | **Forces** a child to fill the remaining space in a Row/Column |
+| `Flexible` | **Allows** a child to shrink, but does not force it to grow |
+| `Wrap` | Like a Row that moves to the next line when it runs out of room |
+
+**In this project:** `Expanded` appears constantly to stop text overflowing in
+rows; `Wrap` is used for the channel chips and the status pill row, because they
+must reflow on narrow screens; `Stack` is how the lesson path puts nodes on top
+of a painted curve.
+
+### Q. ListView vs Column — when do you use which?
+
+- **`Column`** builds all children immediately and does not scroll
+- **`ListView`** scrolls, and `ListView.builder` is **lazy** — it only builds the
+  items currently visible
+
+**In this project:** the community transcript uses `ListView.builder` with
+`reverse: true`, so the newest message sits at the bottom and the view opens
+already scrolled there, like a chat app.
+
+**Trap worth knowing:** a `ListView` inside a `Column` throws, because the Column
+gives unbounded height and the ListView tries to be infinite. You need
+`Expanded` or a fixed height.
+
+### Q. What are Slivers?
+
+Scrollable areas that can do more than a plain list — headers that shrink, grids
+and lists mixed in one scroll view, lazy building throughout.
+
+**Used in this project:** `CustomScrollView` with `SliverToBoxAdapter` in
+`welcome_screen.dart` and `lesson_library_screen.dart`, which lets the canopy
+header and the content scroll as one surface.
+
+### Q. What is an InheritedWidget?
+
+How data is shared **down** the tree efficiently. `Theme`, `MediaQuery` and
+`Navigator` are all InheritedWidgets — that is why `Theme.of(context)` works
+anywhere.
+
+Crucially, only widgets that actually depend on it rebuild when it changes.
+
+**Used in this project:** `lib/widgets/reveal.dart` uses an
+`InheritedNotifier` so scroll notifications tick every `Reveal` below it, without
+passing a callback down manually.
+
+**Note:** Riverpod means you rarely write one yourself — but you should know
+that Riverpod's own `ProviderScope` is built on this mechanism.
+
+### Q. What is a Hero animation?
+
+A shared-element transition: the same widget appears on two screens, and Flutter
+animates it flying between them. Both sides use a `Hero` with the **same tag**.
+
+**Used in this project:** the lesson thumbnail flies from the library card into
+the lesson detail header. Tag is `LessonCard.heroTag(lesson.id)`.
+
+**A real bug this caused:** with an `IndexedStack` shell, two tabs were mounted
+at once, both containing a Hero with the same tag — which Flutter rejects. Fixed
+by wrapping inactive branches in `HeroMode(enabled: false)`. There is a
+regression test for it: `test/hero_tag_test.dart`.
+
+### Q. Implicit vs explicit animations?
+
+| | Example | Use when |
+| --- | --- | --- |
+| **Implicit** | `AnimatedContainer`, `AnimatedOpacity`, `AnimatedSwitcher` | A value changes and you want it to animate. No controller needed |
+| **Explicit** | `AnimationController` + `AnimatedBuilder` | You need to drive it — loop it, reverse it, sequence it, or paint from it |
+
+**Both used here.** Implicit: `AnimatedContainer` in the tinted chips and status
+pills. Explicit: `AnimationController` in `signing_space.dart` (a forever loop)
+and `lesson_path.dart` (a one-shot draw-on plus a repeating pulse).
+
+### Q. What is an AnimationController and what is `vsync`?
+
+A controller produces values from 0 to 1 over a duration and notifies listeners
+on every frame.
+
+`vsync` takes a **TickerProvider**, which synchronises those updates to the
+screen's refresh rate — and, importantly, **stops the ticker when the widget is
+off-screen**, so an animation does not burn battery in a background tab. That is
+what `SingleTickerProviderStateMixin` supplies.
+
+**Always dispose a controller**, or it keeps ticking after the widget is gone.
+Every controller in this project is disposed.
+
+### Q. What is CustomPaint and why did you use it?
+
+It gives you a canvas and lets you draw directly — lines, paths, gradients,
+shadows.
+
+**Used three times, for things widgets cannot express:**
+
+- `signing_space.dart` — the trail on the landing page, including a tapering
+  stroke built from 44 segments and a blurred head
+- `lesson_path.dart` — the winding curve, with the lit portion extracted using
+  `PathMetric` so it exactly matches the completion fraction
+- `practice_strip.dart` — the activity chart
+
+**Why not an image?** Nothing to license, it recolours itself from the theme in
+light or dark mode, it scales to any screen size without pixelation, and it adds
+no bytes to the bundle.
+
+### Q. MediaQuery vs LayoutBuilder?
+
+- **`MediaQuery`** — information about the **screen**: size, text scale,
+  brightness, whether animations are disabled
+- **`LayoutBuilder`** — the constraints **this particular widget** has been given
+
+**Rule of thumb:** use `LayoutBuilder` when a widget should adapt to its own
+space, `MediaQuery` when it should adapt to the device. This project uses
+`MediaQuery.sizeOf(context)` for breakpoints and
+`MediaQuery.disableAnimationsOf(context)` for reduced motion.
+
+### Q. How does Flutter actually render on screen?
+
+Flutter does **not** use the platform's native widgets. It paints every pixel
+itself with its own engine — historically **Skia**, now **Impeller** on newer
+versions.
+
+**That is why** the app looks identical on Android and in a browser, and why a
+Flutter app does not automatically look like a platform-native app.
+
+**On the web** it compiles to JavaScript or WebAssembly and renders through
+CanvasKit, which is why the bundle includes a sizeable `canvaskit/` folder.
+
+---
+
+## 17. Things you did *not* use — and why
+
+Examiners often probe the edges of what you know. Having a reason ready is worth
+more than having used the thing.
+
+### Q. Why not BLoC?
+
+BLoC is an event-driven pattern — you dispatch events, a bloc emits states.
+Powerful for complex flows with many transitions, but it is a lot of boilerplate
+per feature: events, states, the bloc itself.
+
+My state is mostly **streams from Firestore plus small UI flags**. Riverpod maps
+onto that directly with far less ceremony. BLoC would have been scaffolding
+around a problem I did not have.
+
+### Q. Why not GetX or MobX?
+
+- **GetX** bundles state, routing and dependency injection together and relies on
+  a global service locator. That makes testing harder and hides where things come
+  from.
+- **MobX** is reactive and capable, but needs **code generation** to be ergonomic.
+
+Riverpod gave me compile-time safety without a build step.
+
+### Q. Why no code generation (`build_runner`, `freezed`, `json_serializable`)?
+
+Those generate `fromJson`/`toJson` and immutable classes with `copyWith`.
+
+I wrote `fromDoc()` and `toMap()` by hand instead, because:
+
+1. **There are only seven models**, so the saving would be small
+2. **Firestore types need custom handling anyway** — `Timestamp` to `DateTime`,
+   defaults for missing fields, and the legacy `topic`-to-`topics` fallback.
+   Generated code would need annotations and converters for all of it
+3. It avoids a build step that has to be re-run after every model change
+
+**At twenty models I would use it.** At seven, hand-written is clearer.
+
+### Q. Why no Isolates?
+
+Covered in §15 — nothing here is CPU-bound. All the heavy work is I/O, which
+`await` already handles without blocking the UI thread.
+
+### Q. What are platform channels? Did you use them?
+
+The bridge between Dart and native Android/iOS code, for things Flutter has no
+API for.
+
+**Not written directly** — but used indirectly by every plugin. `video_player`,
+`audioplayers`, `google_sign_in` and `file_picker` are all Dart wrappers around
+platform channels into native SDKs.
+
+**If asked when I would write one:** if I needed the camera for real-time sign
+recognition, and no package existed.
+
+### Q. Did you write a custom RenderObject?
+
+No. `CustomPaint` was enough — it gives a canvas without reimplementing layout.
+
+A custom `RenderObject` is for when you need custom **layout** behaviour, not
+just custom painting. The lesson path positions its nodes with `Positioned`
+inside a `Stack`, so layout was already solved.
+
+### Q. What about Flutter flavors?
+
+Build variants — separate dev/staging/production apps with different Firebase
+projects and bundle IDs.
+
+Not used, because there is one environment. **With real users I would need
+them**, so a test account could not write to production data.
+
+### Q. Why no integration tests?
+
+I have unit tests and widget tests. Integration tests drive the real app on a
+device or emulator.
+
+Not written because they need the **Firebase emulator suite** to avoid writing to
+real data, which is meaningful setup. It is the clearest gap in the test
+strategy, and I would add it next alongside security-rules tests.
+
+### Q. What is deferred loading, and would it help your web build?
+
+`deferred as` splits code so part of it downloads only when first needed.
+
+**It would genuinely help here** — the admin screens are useless to a learner but
+ship in every bundle. On Flutter web it would reduce the first download. I did
+not do it because the bundle size was acceptable and it adds complexity to the
+import graph.
+
+### Q. Navigator 1.0 vs 2.0?
+
+- **1.0** is imperative — `Navigator.push(...)`, a stack you manipulate
+- **2.0** is declarative — you describe the whole stack and Flutter works out the
+  transition. Much more capable, much harder to use directly
+
+`go_router` is built on 2.0 and hides that complexity. I still use imperative
+`context.push()` calls, but go_router translates them.
+
+---
+
+## 18. Hard questions
 
 ### Q. Isn't this just a CRUD app with videos?
 
