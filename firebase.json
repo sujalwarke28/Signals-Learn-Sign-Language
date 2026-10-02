@@ -1,1 +1,60 @@
-{"firestore":{"rules":"firestore.rules","indexes":"firestore.indexes.json"},"hosting":{"public":"build/web","ignore":["firebase.json","**/.*","**/node_modules/**"],"rewrites":[{"source":"**","destination":"/index.html"}],"headers":[{"source":"**/*.@(js|css|wasm|ttf|woff2|json|png|jpg|svg|wav)","headers":[{"key":"Cache-Control","value":"public, max-age=31536000, immutable"}]},{"source":"/index.html","headers":[{"key":"Cache-Control","value":"no-cache, no-store, must-revalidate"}]},{"source":"/flutter_service_worker.js","headers":[{"key":"Cache-Control","value":"no-cache, no-store, must-revalidate"}]}]},"flutter":{"platforms":{"android":{"default":{"projectId":"signals-app-a7b29","appId":"1:52674083597:android:0481cf2b6f02edc0928e44","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"signals-app-a7b29","configurations":{"android":"1:52674083597:android:0481cf2b6f02edc0928e44","web":"1:52674083597:web:de544fb96647a6f4928e44"}}}}}}
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "/@(|index.html|flutter.js|flutter_bootstrap.js|main.dart.js|flutter_service_worker.js|manifest.json|version.json)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/@(assets|canvaskit|icons)/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=86400, must-revalidate"
+          }
+        ]
+      }
+    ]
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "signals-app-a7b29",
+          "appId": "1:52674083597:android:0481cf2b6f02edc0928e44",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "signals-app-a7b29",
+          "configurations": {
+            "android": "1:52674083597:android:0481cf2b6f02edc0928e44",
+            "web": "1:52674083597:web:de544fb96647a6f4928e44"
+          }
+        }
+      }
+    }
+  }
+}
